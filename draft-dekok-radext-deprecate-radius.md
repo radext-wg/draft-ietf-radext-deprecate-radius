@@ -6,7 +6,7 @@ docname: draft-dekok-radext-deprecating-radius-00
 stand_alone: true
 ipr: trust200902
 area: Internet
-wg: anima Working Group
+wg: RADEXT Working Group
 kw: Internet-Draft
 cat: std
 submissionType: IETF
@@ -18,7 +18,7 @@ pi:    # can use array (if all yes) or hash here
 
 author:
 
-- ins: A. Dekok
+- ins: A. DeKok
   name: Alan DeKok
   org: FreeRADIUS
   email: aland@freeradius.org
@@ -26,38 +26,66 @@ author:
 normative:
   BCP14: RFC8174
   RFC2865:
+  RFC4279:
   RFC6421:
 
 informative:
   RFC1321:
+  RFC2866:
+  RFC2868:
+  RFC3579:
   RFC5176:
   RFC5580:
   RFC6151:
+  RFC6218:
   RFC6613:
   RFC6614:
   RFC6973:
   RFC7360:
+  RFC7585:
 
 venue:
-  group: radext
+  group: RADEXT
   mail: radext@ietf.org
   github: freeradius/deprecating-radius.git
 
 --- abstract
 
-This document formally deprecates the use of the User Datagram Protocol (UDP) and of the Transport Congestion Protocol (TCP) as permitted transports for RADIUS (RFC 2865 and RFC 6613).  When using those transports, RADIUS relies on MD5 (RFC 1321) for security, and as a result does not support modern cryptographic algorithms and mechanisms.  Those RADIUS transports do not offer adequate privacy, as the contents of packets are sent "in the clear" or are at best obfuscated with dubious methods which also rely on MD5.
+RADIUS crypto-agility was first mandated as future work by RFC 6421.  The outcome of that work was the publication of RADIUS over TLS (RFC 6614) and RADIUS over DTLS (RFC 7360) as experimental documents.  Those transport protocols have been in wide-spread use for many years in a wide range of networks.  They have proven their utility as replacements for the previous UDP (RFC 2865) and TCP (RFC 6613) transports.  With that knowledge, the continued use of insecure transports for RADIUS has serious and negative implications for privacy and security.
 
-The use of insecure transport has negative implications for privacy and security.  This document deprecates RADIUS/UDP and RADIUS/TCP outside of secure networks.  It mandates the use of TLS-based transports such as RADIUS/TLS and RADIUS/DTLS when RADIUS packets aare sent outside of secure networks.
+This document formally deprecates the use of the User Datagram Protocol (UDP) and of the Transport Congestion Protocol (TCP) as transport protocols for RADIUS. These transports are permitted inside of secure networks, but their use even in that environment is strongly discouraged.  For all other environments, the use of TLS-based transports is mandated.
 
 --- middle
 
 # Introduction
 
-The RADIUS protocol [RFC2865] was first standardized in 1997, though its roots go back much earlier to 1993.  The protocol uses MD5 [RFC1321] to sign a packets, and to obfsucate certain attributes such as User-Password.  While MD5 has been broken, it is a testament to the design of RADIUS that there have been (as yet) no attacks on RADIUS which are stronger than brute-force.
+The RADIUS protocol [RFC2865] was first standardized in 1997, though its roots go back much earlier to 1993.  The protocol uses MD5 [RFC1321] to sign some packets types, and to obfsucate certain attributes such as User-Password.  As originally designed, Access-Request packets were entirely unauthenticated, and could be trivially spoofed as discussed in [RFC3579] Section 4.3.2.  In order to prevent such spoofing, that specification defined the Message-Authenticator attribute ([RFC3579] Section 3.2) which allowed for packets to carry a signature based on HMAC-MD5.
 
-Most information in RADIUS such as user identifiers is sent in cleartext, with obvious privacy implications.  Only a few attributes are hidden, via obfuscation methods which also rely on MD5.
+The state of MD5 security was discussed in [RFC6151], which led to the state of RADIUS security being reviewed in [RFC6421] Section 3.  The outcome of that review was the remainder of [RFC6421], which created crypto-agility requirements for RADIUS.
 
-It is no longer approprate to rely on MD5 for security.  It is no longer appropriate to send private information in clear text.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure transport layers such as TLS or DTLS.
+RADIUS/TLS [RFC6614] and RADIUS/DTLS [RFC7360] were then defined in order to meet the crypto-agility requirements of [RFC6421].  RADIUS/TLS has been in wide-spread use for about a decade, including Eduroam, and more recently OpenRoaming.  RADIUS/DTLS has seen less use across the public Internet, but it nonetheless has multiple implementations.
+
+As of the writing of this specification, RADIUS/UDP is still widely used, even though it depends on MD5 and "ad hoc" constructions for security.  While MD5 has been broken, it is a testament to the design of RADIUS that there have been (as yet) no attacks on RADIUS Authenticator signatures which are stronger than brute-force.
+
+However, the probmens with MD5 means that if a someone can view unencrypted RADIUS traffic, even a hobbyist attacker can crack all possible RADIUS shared secrets of eight characters or less.  Such attacks can also result in compromise of all passwords carried in the User-Password attribute.
+
+Even if a stronger packet signature method was used as in [RFC6218], it would not fully address the issues with RADIUS.  Most information in RADIUS is sent in cleartext, and only a few attributes are hidden via obfuscation methods which rely on more "ad hoc" MD5 constructions.  The privacy implications of this openness are severe.
+
+Any observer of non-TLS RADIUS traffic is able to tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in [RFC5580], a users location may be determined to within 15 or so meters.  An observer can use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
+
+When RADIUS/UDP is used across the public Internet, the location of corporate executives can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be be compromised.  The negative implications for security and individual safety are obvious.
+
+These issues are only partly mitigated when the attributes RADIUS is carrying define their own increased security and privacy.  For example, some authentication methods such EAP-TLS, EAP-TTLS, etc. allow for User-Name privacy and for more secure transport of passwords.  The use of MAC address randomization can limit device informationidentification to a particular manufacterer, instead of to a unique device.
+
+However, these authentication methods are not always used or are not always available.  Even if these methods were used ubiquitously, they do not protect all of the information which is publicly available when RADIUS/UDP or RADIUS/TCP is used.
+
+It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.
+
+The use of TLS-based transport ensures complete privacy and security for all RADIUS traffic.  An observer is limited to knowing rough activity levels of a client or server.  That is, an observer can tell if there are a few users on a NAS, or many users on a NAS.  All other information is hidden from all observers.
+
+## Overview
+
+The rest of this document begins a summary of issues with RADIUS, and shows just how trivial it is to crack RADIUS/UDP security.  We then mandate the use of TLS transport, and describe what that means.  We give recommendations on how current systems can be migrated to using TLS.  We conclude with privacy and security considerations.
 
 # Terminology
 
@@ -87,47 +115,115 @@ It is no longer approprate to rely on MD5 for security.  It is no longer appropr
 
 > the Transport Layer Security protocol.  Generally when we refer to TLS in this document, we are referring to RADIUS/TLS and/or RADIUS/DTLS.
 
+* NAS
+
+> Network Access Server, which is a RADIUS client.
+
 # Overview of issues with RADIUS
 
-There are a number of issues with RADIUS.   RADIUS sends most information "in the clear", with obvious privacy implications.
+There are a number of issues with RADIUS.   For one, RADIUS sends most information "in the clear", with obvious privacy implications.
 
-Further. MD5 has been broken [RFC6151], and no protocol should be using it for anything.  Even if MD5 was not broken, computers have gotten substantially faster in the past thirty years.  This speed increase makes it possible for the average hobbyist to perform brute-force attacks on cracking shared secrets.
+Further, MD5 has been broken for over a decade, as summarized in [RFC6151].  No protocol should be using MD5 for anything.  Even if MD5 was not broken, computers have gotten substantially faster in the past thirty years.  This speed increase makes it possible for the average hobbyist to perform brute-force attacks to crack even seemingly complex shared secrets.
 
 We address each of these issues in detail below.
 
 ## Information is sent in Clear Text
 
-Other than a few attributes such as User-Password, all RADIUS traffic is sent "in the clear".  The resulting traffic has a large number of privacy issues.  We refer to [RFC6973], and specifically to Section 5 of that docuemnt for detailed discussion.  RADIUS is vulnerable to all of the issues raised by [RFC6973].
+Other than a few attributes such as User-Password, all RADIUS traffic is sent "in the clear".  The resulting traffic has a large number of privacy issues.  We refer to [RFC6973], and specifically to Section 5 of that document for detailed discussion.  RADIUS is vulnerable to all of the issues raised by [RFC6973].
 
-There are clear privacy and security information with sending user identifiers, and user locations [RFC5580] in clear-text across the Internet.  As such, the use of clear-text protocols across insecure networks is no longer appropriate.
+There are clear privacy and security information with sending user identifiers, and user locations [RFC5580] in clear-text across the Internet.  As such, the use of clear-text protocols across insecure networks is no longer acceptable.
 
 ## MD5 has been broken
 
-Attacks on MD5 are summarized in part in [RFC6151]. While there have not been many new attacks in the decade since [RFC6151] was published, that does not mean that further attacks do not exist.  It more likely that no one is looking for new attacks.
+Attacks on MD5 are summarized in part in [RFC6151]. While there have not been many new attacks in the decade since [RFC6151] was published, that does not mean that further attacks do not exist.  It is more likely that no one is looking for new attacks.
 
 It is reasonable to expect that new research can further break MD5, but also that such research may not be publicly available.
 
 ## Complexity of cracking RADIUS shared secrets
 
-The cost of cracking a a shared secret can only go down over time as computation becomes cheaper.  At the time of writing this document, an "off the shelf" commodity CPU can hash approximately 100,000K octets per second.  If we limit shared secrets to upper/lowercase letters, numbers, and a few "special" characters, we have 64 possible characters for shared secrets.  Which means that for 8-character passwords, there are 2^48 possible password combinations.
+The cost of cracking a a shared secret can only go down over time as computation becomes cheaper.  The issue is made worse because of the way MD5 is used in RADIUS.  The attacker does not have to calculate the hash over the entire packet, as that can be precalculated, and cached.  The attacker can simply begin with that precalculated portion, and brute-force only the shared secret portion.
 
-The issue is made worse because of the way MD5 is used in RADIUS.  The attacker does not have to calculate the hash over the entire packet, as that can be precalculated, and cached.  The attacker can simply begin with that precalculated portion, and brute-force only the password.
+At the time of writing this document, an "off the shelf" commodity computer can calculate at least 100M MD5 hashes per second.  If we limit shared secrets to upper/lowercase letters, numbers, and a few "special" characters, we have 64 possible characters for shared secrets.  Which means that for 8-character passwords, there are 2^48 possible password combinations.
 
-The result is that using one machine, it takes approximately 32 days to brute-force the entire 8 octet / 64 character password space.  The problem is even worse when graphical processing units (GPUs) are used. A high-end GPU is capable of performing more than 64 billion hashes per second.  (https://gist.github.com/Chick3nman/e4fcee00cb6d82874dace72106d73fef).  At that rate, the entire 8 character space described above can be searched in approximately 90 minutes.
+The result is that using one readily available machine, it takes approximately 32 days to brute-force the entire 8 octet / 64 character password space.  The problem is even worse when graphical processing units (GPUs) are used. A high-end GPU is capable of performing more than 64 billion hashes per second.  (https://gist.github.com/Chick3nman/e4fcee00cb6d82874dace72106d73f).  At that rate, the entire 8 character space described above can be searched in approximately 90 minutes.
 
-This is an attack which is feasible today for a hobbyist. Adding more characters to the permitted character set increases the cost of cracking, but not enough to be secure.
+This is an attack which is feasible today for a hobbyist. Increasing the size of the character set raises the cost of cracking, but not enough to be secure.  Increasing the character set to 93 characters means that the hobbyist using a GPU could search the entire 8 character space in about a day.
 
-For example, we could extend the character set to 72 characters (uppercase, lowercase, numbers, and 10 "special" characters), and password length to 10 characters.  This change would only increase the cost for a hobbyist from ninety minutes to a bit under two years.
+Increasing the length of the shared secret a bit helps.  For secrets ten characters long, a GPU can search a 64-character space in about six months, and a 93 character space would take approximately 24 years.
 
-The brute-force attack is also trivially parallelizable.  Nation-states have sufficient resources to deploy hundreds to thousands of systems dedicated to these attacks.
+The brute-force attack is also trivially parallelizable.  Nation-states have sufficient resources to deploy hundreds to thousands of systems dedicated to these attacks.  That realization means that a "time to crack" of 24 years is simply expensive, but is not particularly difficult.
 
-Whether the above numbers are exactly correct, or only approximate is immaterial.  These attacks will only get better over time.  The cost to crack shared secrets will only go down.
+Whether the above numbers  exactly correct, or only approximate is immaterial.  These attacks will only get better over time.  The cost to crack shared secrets will only go down.
 
-Despite the ease of attacking MD5, it is still a common practice for some "cloud" and other RADIUS providers to send RADIUS/UDP packets over the Internet "in the clear".  It is also common practice for administrators to use "short" shared secrets, and to use shared secrets from a limited character set.  Theses practice are followed for ease of use of administrators, but they are also insecure.
+Even worse, administrators do not always derive shared secrets from secure sources of random numbers.  The "time to crack" numbers given above are the absolute best case, assuming administrators follow best practices for creating secure shared secrets.  For shared secrets created manually by a person, the search space is orders of magnitude smaller than the best case outlined above.
+
+It should be assumed that an average attacker with modest resource can crack most human-derived shared secrets in minutes, if not seconds.
+
+Despite the ease of attacking MD5, it is still a common practice for some "cloud" and other RADIUS providers to send RADIUS/UDP packets over the Internet "in the clear".  It is also common practice for administrators to use "short" shared secrets, and to use shared secrets created by a person, or derived from a limited character set.  Theses practice are followed for ease of use of administrators, but they are also highly insecure.
+
+## Tunnel-Password and CoA-Request packets
+
+There are similar security issues for the Tunnel-Password attribute, at least in CoA-Request and Disconnect-Request packets.
+
+[RFC5176] Section 2.3 says:
+
+    Request Authenticator
+
+       In Request packets, the Authenticator value is a 16-octet MD5
+       [RFC1321] checksum, called the Request Authenticator.  The
+       Request Authenticator is calculated the same way as for an
+       Accounting-Request, specified in [RFC2866].
+
+Where [RFC2866] Section 3 says:
+
+      The NAS and RADIUS accounting server share a secret.  The Request
+      Authenticator field in Accounting-Request packets contains a one-
+      way MD5 hash calculated over a stream of octets consisting of the
+      Code + Identifier + Length + 16 zero octets + request attributes +
+      shared secret (where + indicates concatenation).  The 16 octet MD5
+      hash value is stored in the Authenticator field of the
+      Accounting-Request packet.
+
+Taken together, these defintions means that for CoA-Request packets, all attribute obfuscation is calculated with the Reply Authenticator being all zeroes.
+
+[RFC5176] Section 3.6 allows for Tunnel-Password in CoA-Request packets:
+
+      ...
+      Change-of-Authorization Messages
+      
+      Request   ACK      NAK   #   Attribute
+      ...
+      0+        0        0    69   Tunnel-Password (Note 5)
+      ...
+      (Note 5) When included within a CoA-Request, these attributes
+      represent an authorization change request.  Where tunnel attributes
+      are included within a successful CoA-Request, all existing tunnel
+      attributes are removed and replaced by the new attribute(s).
+
+However, [RFC2868] Section 3.5 says that Tunnel-Password is encrypted with the Request Authenticator:
+
+      Call the shared secret S, the pseudo-random 128-bit Request
+      Authenticator (from the corresponding Access-Request packet) R,
+
+The assumption that the Request Authenticator is random data is true for Access-Request packets.  It is not true for CoA-Request packets
+
+That is, when the Tunnel-Password attribute is used in CoA-Request packets, the only source of randomness in the obfuscation is the salt, as defined in [RFC2868] Section 3.5;
+
+    Salt
+      The Salt field is two octets in length and is used to ensure the
+      uniqueness of the encryption key used to encrypt each instance of
+      the Tunnel-Password attribute occurring in a given Access-Accept
+      packet.  The most significant bit (leftmost) of the Salt field
+      MUST be set (1).  The contents of each Salt field in a given
+      Access-Accept packet MUST be unique.
+ 
+Which means that there is only 15 bits of entropy in the Tunnel-Password obfuscation (plus the secret).  It is not known if this limitation makes it easier to determine the contents of the Tunnel-Password.  However, it cannot be a good thing, and it is one more reason to deprecate RADIUS/UDP.
+
+# All short Shared Secrets have been compromised
 
 Unless RADIUS packets are sent over a secure network (IPSec, TLS, etc.), administrators should assume that any shared secret of 8 characters or less has been immediately compromised.  Administrators should assume that any shared secret of 10 characters or less has been compromised by an attacker with significant resources.  Administrators should also assume that any private information (such as User-Password) which depends on such shared secrets has also been compromised.
 
-In short, if you have sent a User-Password via RADIUS/UDP over the Internet in the last decade, it is very likely that the password is available to an attacker with sufficient resources.
+Further, if a User-Password has been sent over the Internet via RADIUS/UDP or RADIUS/TCP in the last decade, you should assume that password has been compromised by an attacker with sufficient resources.
 
 # Deprecating RADIUS, and mandating TLS.
 
@@ -139,19 +235,19 @@ RADIUS/UDP and RADIUS/TCP MUST NOT be used outside of secure networks.  A secure
 
 For example, if IPSec is used between two systems, then those systems may use RADIUS/UDP or RADIUS/TCP over the IPSec connection.
 
-Similarly, RADIUS/UDP and RADIUS/TCP may be used in secure management networks.
+Similarly, RADIUS/UDP and RADIUS/TCP may be used in secure management networks.  However, administrators should not assume that such uses are secure.
 
-However, using RADIUS/UDP and RADIUS/TCP in any environment is still NOT RECOMMENDED.  A network misconfiguration could result in the RADIUS traffic being sent over an insecure network.  Neither the RADIUS client nor the RADIUS server would be aware of this misconfiguration.
+Using RADIUS/UDP and RADIUS/TCP in any environment is still NOT RECOMMENDED.  A network misconfiguration could result in the RADIUS traffic being sent over an insecure network.  Neither the RADIUS client nor the RADIUS server would be aware of this misconfiguration.
 
-In contrast, when TLS is used, the RADIUS endpoints can enforce security themselves.
+In contrast, when TLS is used, the RADIUS endpoints are aware of all security issues, and can enforce security for themselves.
 
 ## Mandating TLS transport
 
-All new RADIUS systems MUST support RADIUS/TLS and/or RADIUS/DTLS.
+All RADIUS systems MUST support RADIUS/TLS and/or RADIUS/DTLS.
 
 ## Crypto-Agility
 
-The crypto-agility requirements of [RFC6421] are addressed in [RFC6614] Appendix C, and in Section 10.1 of [RFC7360].  For clarity, we repeat the text of [RFC7360] here, with some minor modificiations.
+The crypto-agility requirements of [RFC6421] are addressed in [RFC6614] Appendix C, and in Section 10.1 of [RFC7360].  For clarity, we repeat the text of [RFC7360] here, with some minor modifications to update references, but not content.
 
 Section 4.2 of [RFC6421] makes a number of recommendations about security properties of new RADIUS proposals.  All of those recommendations are satisfied by using TLS or DTLS as the transport layer.
 
@@ -163,9 +259,17 @@ Section 4.5 of [RFC6421] requires that the new security methods apply to all pac
 
 Section 4.6 of [RFC6421] requires automated key management.  This requirement is satisfied by using TLS or DTLS key management.
 
+We can now finalize the work began in [RFC6421].  We now state that new RADIUS specifications MUST NOT create any new cryptographic primitives to sign individual packets, or to obfscate the contents of any attributes.  All security and privacy MUST instead be provided by a secure transport layer such as TLS.  Simply using IPSec is not enough, as the use (or not) of IPSec is unknown to the RADIUS application.
+
+It is NOT RECOMMENDED to define new attributes which use the content obfuscation methods defined for User-Password or Tunnel-Password.  We would like to forbid such constructs entirely.  We recognize that RADIUS/UDP will still be in use for many years, and that new standards may require some modicrum of privacy.  As a result, it is difficult to forbid the use of these constructs.
+
+hat being said, there has been no need since [RFC2868] in 2000 for new attribute which use these obfuscation methods.  We believe therefore that there will be no demand for this kind of new attribute.
+
 # Migration Path and Recommendations
 
-We recognize that it is difficult to upgrade legacy devices with new cryptographic protocols and user interfaces.  The problem is made worse because the volume of RADIUS devices which are in use.  The exact number is unknown, and can only be approximated.  Our best guesses would be in the order of hundreds of thousands, if not millions.
+We recognize that it is difficult to upgrade legacy devices with new cryptographic protocols and user interfaces.  The problem is made worse because the volume of RADIUS devices which are in use.  The exact number is unknown, and can only be approximated.  Our best guesses would be in the order of hundreds of thousands, if not millions of RADIUS/UDP devices are in daily use.
+
+We therefore need to define a migration path to using secure transports.  We give a few migration steps by making stronger recommendations for shared secrets.  Where [RFC6614] Section 2.3 makes support for TLS-PSK optional, we now require support for TLS-PSK.
 
 ## Shared Secrets
 
@@ -179,26 +283,63 @@ We recognize that it is difficult to upgrade legacy devices with new cryptograph
 
 This recommendation is no longer adequate, so we strengthen it here.
 
-RADIUS implementations MUST support shared secrets of at least 24 octets, and SHOULD support shared secrets of 64 octets.  Implementations MUST warn administrators that the configured shared secret is insecure if it is 10 octets or less in length.
+RADIUS implementations MUST support shared secrets of at least 32 octets, and SHOULD support shared secrets of 64 octets.  Implementations MUST warn administrators that the shared secret is insecure if it is 10 octets or less in length.
 
-Administrators SHOULD generate shared secrets from a source of secure random numbers.  Any other practice is likely to lead to compromise of the shared secret.  One solution is to use a simple script (given below)
+Administrators SHOULD use shared secrets of at least 24 octets, generated using a source of secure random numbers.   Any other practice is likely to lead to compromise of the shared secret, user information, and possibly of the entire network.
+
+Creating secure shared secrets is not difficult.  One solution is to use a simple script given below.
 
 > \#!/usr/bin/env perl
 > use MIME::Base32;
 > use Crypt::URandom();
 > print join('-', unpack("(A4)*", lc encode_base32(Crypt::URandom::urandom(12)))), "\n";
 
-This script will generate secrets of the form "2nw2-4cfi-nicw-3g2i-5vxq".  This form of secret will be accepted by any known implementation which supports at least 24 octets for shared secrets.  The secrets have 96 bits of entropy, which is adequate for the forseeable future.
+This script reads 96 bits of random data from a secure source, encodes it in Base32, and then makes it easier for people to work with.  The generated secrets are of the form "2nw2-4cfi-nicw-3g2i-5vxq".  This form of secret will be accepted by any known implementation which supports at least 24 octets for shared secrets.
 
 Given the simplicity of creating strong secrets, there is no excuse for using weak shared secrets with RADIUS.
 
+RADIUS implementors SHOULD provide tools for administrators which automatically create secure shared secrets.
+
+Given the insecurity of RADIUS, the absolute minimum acceptable security is to use strong shared secrets.  However, TLS-PSK is not substantially more complex, and offers significantly increased security and privacy.
+
 ## TLS-PSK
 
-We recognize that it may be difficult to fully upgrade client implementations to allow for certificates to be used with RADIUS/TLS and RADIUS/DTLS.  It is therefore RECOMMENDED that client implementations allow the use of a pre-shared key (TLS-PSK).  The client implementation can then expose a flag "TLS yes / no", and then a shared secret (now PSK) entry field.  Any shared secret used for RADIUS/UDP MUST NOT be used for TLS-PSK.
+TLS uses certificates in most common uses.  However, we recognize that it may be difficult to fully upgrade client implementations to allow for certificates to be used with RADIUS/TLS and RADIUS/DTLS.  It is therefore RECOMMENDED that client implementations allow the use of a pre-shared key (TLS-PSK).  The client implementation can then expose a flag "TLS yes / no", and then a shared secret (now PSK) entry field.
 
-Implementations MUST support PSKs of at least 24 octets, and SHOULD support PSKs of 64 octets.  Implementations MUST require that PSKs be at least 8 octets in length.  That is, short PSKs MUST NOT be permitted to be used.
+Any shared secret used for RADIUS/UDP MUST NOT be used for TLS-PSK.
+
+Implementations MUST support PSKs of at least 32 octets, and SHOULD support PSKs of 64 octets.  Implementations MUST require that PSKs be at least 16 octets in length.  That is, short PSKs MUST NOT be permitted to be used.
+
+Administrators SHOULD use PSKs of at least 24 octets, generated using a source of secure random numbers.  The script given above can again be used.
 
 We also incorporate by reference the requirements of Section 10.2 of [RFC7360] when using PSKs.
+
+### PSK Identities
+
+[RFC6614] is silent on the subject of PSK identities, which is an issue that we correct here.
+
+The need to manage identities associated with PSK is a new requirement for NAS management interfaces, and is a new requirement for RADIUS servers.  As such, implementors and operators require guidance.
+
+RADIUS systems implementing TLS-PSK MUST support identities as per [RFC4279] Section 5.3, and MUST enable configuring TLS-PSK identities in management interfaces as per [RFC4279] Section 5.4.
+
+A RADIUS client implementing TLS-PSK MUST update their management interfaces and application programming interfaces (APIs) to label the PSK field as "PSK" or "TLS-PKS, and MUST NOT label the PSK field as "shared secret".
+
+Where dynamic server lookups [RFC7585] are not used, RADIUS clients MUST still permit the configuration of a RADIUS server IP address.
+
+When a RADIUS server implements TLS-PSK, the PSK identity replaces the IP address as the logical identifier for a RADIUS client.  RADIUS servers MUST be able to look up PSK identity in a subsystem which then returns the actual PSK.
+
+We note that due to NAT, etc. there may be multiple RADIUS clients using one public IP address.  RADIUS servers MUST support such a configuration, and MUST support unique PSK identities for each client which is deployed in such a scenario.
+
+RADIUS servers SHOULD tie PSK identities to a particular permitted IP address or permitted network, as doing so will lower the risk if a PSK is leaked.  RADIUS servers MUST permit multiple clients to share one permitted IP address or network.
+
+A RADIUS server which accepts TLS-PSK MUST support a unique PSK identifier per RADIUS client.  There is no reason to use the same identifier for multiple clients.  A RADIUS server which accepts TLS-PSK MUST have a unique PSK per RADIUS client.
+
+It is RECOMMENDED that RADIUS clients and server track all used shared secrets and PSKs, and then verify that the following requirements all hold true:
+
+* no shared secret is used for more than one RADIUS client
+* no PSK is used for more than one RADIUS cleint
+* no shared secret is used as a PSK
+* no PSK is used as a shared secret
 
 # Privacy Considerations
 
@@ -211,6 +352,10 @@ Deprecating insecure transport for RADIUS, and requiring secure transport means 
 The primary focus of this document is addressing security considerations for RADIUS.
 
 Deprecating insecure transport for RADIUS, and requiring secure transport means that historical and/or future security issues with the RADIUS protocol no longer apply.
+
+Experience has shown that it can be difficult to configure and update certificates in a RADIUS environment.  Public Certification Authorities (CAs) will not issue certificates specifically for use by RADIUS servers.  As for updates, certificates may be valid for many years.  By the time a certificate is up for renewal, the people and processes responsible for it may have changed.  Which means that updating certificates can be a complex and error-prone task.
+
+Therefore while [RFC6614] suggested that TLS-PSK was optional, we mandate support for TLS-PSK here.  We also correct the omission of any discussion related to TLS-PSK identies in that specification, and explain how those identities are used on clients and servers.
 
 # IANA Considerations
 

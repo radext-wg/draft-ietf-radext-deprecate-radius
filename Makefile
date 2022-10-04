@@ -19,12 +19,18 @@ ${DRAFT}-${VERSION}.txt: ${DRAFT}.txt
 	@xml2rfc --html -o $@ $?
 
 submit: ${DRAFT}.xml
-	@curl -S -F "user=aland@deployingradius.com" -F "xml=@${DRAFT}.xml" https://datatracker.ietf.org/api/submit
+	@curl -S -F "user=aland@freeradius.org" -F "xml=@${DRAFT}.xml" https://datatracker.ietf.org/api/submit
 
+.PHONY:
 version:
 	@echo Version: ${VERSION}
 
+.PHONY:
 clean:
 	@rm -f *.xml *~
+
+.PHONY: tag
+tag:
+	@git tag ${DRAFT}-${VERSION}
 
 .PRECIOUS: ${DRAFT}.xml
