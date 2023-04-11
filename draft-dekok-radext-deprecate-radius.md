@@ -42,6 +42,12 @@ informative:
   RFC6973:
   RFC7360:
   I-D.dekok-radext-tls-psk:
+  WIFILOC:
+     title: "Accurate indoor location with Wi-Fi connectivity"
+     author:
+       name: "Wi-Fi Alliance"
+     format:
+       TXT: https://www.wi-fi.org/discover-wi-fi/wi-fi-location
 
 venue:
   group: RADEXT
@@ -83,17 +89,21 @@ However, the problens with MD5 means that if a someone can view unencrypted RADI
 
 Even if a stronger packet signature method was used as in [RFC6218], it would not fully address the issues with RADIUS.  Most information in RADIUS is sent in cleartext, and only a few attributes are hidden via obfuscation methods which rely on more "ad hoc" MD5 constructions.  The privacy implications of this openness are severe.
 
-Any observer of non-TLS RADIUS traffic is able to tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in [RFC5580], a users location may be determined to within 15 or so meters.  An observer can use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
+Any observer of non-TLS RADIUS traffic is able to tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in [RFC5580], a users location may be determined to within 15 or so meters outdoors, and with "meter-level accuracy indoors" [WIFILOC].  An observer can also use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
 
 When RADIUS/UDP is used across the public Internet, the location of corporate executives can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be be compromised.  The negative implications for security and individual safety are obvious.
 
-These issues are only partly mitigated when the attributes RADIUS is carrying define their own increased security and privacy.  For example, some authentication methods such EAP-TLS, EAP-TTLS, etc. allow for User-Name privacy and for more secure transport of passwords.  The use of MAC address randomization can limit device informationidentification to a particular manufacterer, instead of to a unique device.
+These issues are only partly mitigated when the attributes carried within RADIUS define their own methods to increase security and privacy.  For example, some authentication methods such EAP-TLS, EAP-TTLS, etc. allow for User-Name privacy and for more secure transport of passwords.  The use of MAC address randomization can limit device informationidentification to a particular manufacterer, instead of to a unique device.
 
 However, these authentication methods are not always used or are not always available.  Even if these methods were used ubiquitously, they do not protect all of the information which is publicly available when RADIUS/UDP or RADIUS/TCP is used.
 
 It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.
 
 The use of a secure transport such as IPSec or TLS ensures complete privacy and security for all RADIUS traffic.  An observer is limited to knowing rough activity levels of a client or server.  That is, an observer can tell if there are a few users on a NAS, or many users on a NAS.  All other information is hidden from all observers.
+
+It is also possbile for an attacker to record the session traffic, and later crack the TLS session key.  This attack could comprise all traffic sent over that connection, including EAP session keys.  If the cryptographic methods provide forward secrecy ({{?RFC7525}} Section 6.3), then breaking one session provides no information about other sessions.  As such, it is RECOMMENDED that all cryptographic methods used to secure RADIUS conversations provide forward secrecy.  While forward secrecy will not protect individual sessions from attack, it will prevent attack on one session from being leveraged to attack other, unrelated, sessions.  AAA servers can also minimize the impact of such attacks using TLS connections with short lifetimes, though that practice can cause spurious errors in a proxy environment.
+
+The final attack possible in a AAA system is where one party in a AAA conversation is compromised or run by a malicious party.  This attack is made more likely by the extensive use of RADIUS proxy forwarding chains.  In that situation, every RADIUS proxy has full visibility into, and control over, the traffic it transports.  The solution here is to minimize the number of proxies involved, such as by using Dynamic Peer Discovery ({{?RFC7585}}.
 
 ## Overview
 
@@ -257,7 +267,11 @@ In contrast, when TLS is used, the RADIUS endpoints are aware of all security is
 
 ## Mandating Secure transports
 
-All systems sending RADIUS packets outside of secure networks MUST use either IPSec, or RADIUS/TLS, or RADIUS/DTLS.
+All systems sending RADIUS packets outside of secure networks MUST use either IPSec, or RADIUS/TLS, or RADIUS/DTLS. It is RECOMMENDED, for operational and visibility reasons, that RADIUS/TLS or RADIUS/DTLS are preferred over IPSec.
+
+Unlike (D)TLS, use of IPSec means that applications are generally unaware of transport-layer security. Any problem with IPSec such as configuration issues, negotiation or re-keying problems are typically is presented to the RADIUS servers as 100% packet loss.  These issues may occur at any time, independent of any changes to a RADIUS application using that transport.  Further, network misconfigurations which remove all security are completely transparent to the RADIUS application: packets can be sent over an insecure link, and the RADIUS server is unaware of the failure of the security layer.
+
+In contrast, (D)TLS gives the RADIUS application completely knowledge and control over transport-layer security.  The failure cases around (D)TLS are therefore often clearer, easier to diagnose and faster to resolve than failures in IPSec.
 
 ## Crypto-Agility
 
