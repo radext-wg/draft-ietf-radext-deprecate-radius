@@ -1,7 +1,7 @@
 ---
 title: Deprecating RADIUS/UDP and RADIUS/TCP
 abbrev: Deprecating RADIUS
-docname: draft-dekok-radext-deprecating-radius-02
+docname: draft-dekok-radext-deprecating-radius-03
 
 stand_alone: true
 ipr: trust200902
@@ -27,6 +27,7 @@ normative:
   BCP14: RFC8174
   RFC2865:
   RFC6421:
+  RFC8044:
 
 informative:
   RFC1321:
@@ -366,7 +367,7 @@ While we still permit the use of UDP and TCP transports in secure environments, 
 
 One approach to increasing RADIUS privacy is to minimize the amount of PII which is sent in packets .Implementors of RADIUS products and administrators of RADIUS systems SHOULD ensure that only the minimum necessary PII is sent in RADIUS.
 
-Where possible, identities should be anonymized (e.g. {{?RFC7542}} Section 2.4).  Where the Chargeable-User-Identifer {{?RFC4372}} is used, we strenghten the suggestion of that specification to say that the Chargeable-User-Identifer MUST be unique per session.  There is no reason to use the same CUI across multiple sessions.
+Where possible, identities should be anonymized (e.g. {{?RFC7542}} Section 2.4).  The use of anonymized identies means that the the Chargeable-User-Identifer {{?RFC4372}} should also be used.  Further discussion on this topic is below.
 
 Device information SHOULD be either omitted, or randomized.  e.g. MAC address randomization could be used on end-user devices.  The details behind this recommendation are the subject of ongoing research and development.  As such, we do not offer more specific recommendations here.
 
@@ -377,6 +378,64 @@ Location information ({{RFC5580}} SHOULD either be omitted, or else it SHOULD be
 > All OpenRoaming ANPs MUST support signalling of location information
 
 This location information is required to include at the minimum the country code.  We suggest the country code SHOULD also be the maximum amount of location information which is sent over third-party networks.
+
+### Chargeable-User-Identity
+
+Where the Chargeable-User-Identity (CUI) {{?RFC4372}} is used, it SHOULD be unique per session.  This practice will help to maximize user privacy, as it will be more difficult to track users across multiple sessions.  Due to additional constraints which we will discuss below, we cannot require that the CUI change for every session.
+
+What we can do is to require that the home server MUST provide a unique CUI for each combination of user and visited network.  That is, if the same user visits multiple networks, the home server MUST provide different CUIs to each visited network for that user.  The CUI MAY be the same across multiple sessions for that user on one particular network.  The CUI MAY be the same for multiple devices used by that user on one particular network.
+
+We note that the MAC address is likely the same across multiple user sessions on one network.  Therefore changing the CUI offers little additional benefit, as the user can still be tracked by the unchanging MAC address.  Never the less, we believe that having a unique CUI per session can be useful, because there is ongoing work on increasing user privacy by allowing more MAC address randomization.  If we were to recommend that the CUI remain constant across multiple sessions, that would in turn negate much of the effort being put into MAC address randomization.
+
+One reason to have a constant CUI value for a user (or user devices) on one network is that network access providers may need to enforce limits on simultaneous logins.  Network providers may also need to correlate user behavior across mutliple sessions in order to track and prevent abuse.  Both of these requirements are impossible if the CUI changes for every user session.
+
+The result is that there is a trade-off between user privacy and the needs of the local network.  While perfect user privacy is an admirable goal, perfect user privacy may also allow anonymous users to abuse the visited network.  The network would then likely simply refuse to provide network access.  Users may therefore have to accept some limitations on privacy, in order to obtain network access.
+
+We take a short digression here to give some recommendations for creating and managung of CUI.  We believe that these recommendations will help implementors satisfy the preceeding requirements, while not imposing undue burden on the implementations.
+
+In general, the simplest way to track CUIs long term is to associate the CUI to user identity in some kind of cache or database.  This association could be created at the tail end of the authentication process, and before any accounting packets were received.  This association should generally be discarded after a period of time if no accounting packets are received.  If accounting packets are received, the CUI to user association should then be tracked along with the normal accounting data.
+
+The above method for tracking CUI works no matter how the CUI is generated.  If the CUI can be unique per ssesion, or it could be tied to a particular user identity across a long period of time.  The same CUI could also be associated with multiple devices.
+
+Where the CUI is not unique for each session, the only minor issue is the cost of the above method is that the association is stored on a per-session basis when there is no need for that to be done.  Storing the CUI per session means that is it possible to arbitrarily change how the CUI is calculated, with no impact on anything else in the system.  Designs such as this which decouple unrelated architectural elements are generally worth the minor extra cost.
+
+For creating the CUI, that process should be done in a way which is scalable and efficient.  For a unique CUI per user, implementors SHOULD create a value which is unique both to the user, and to the visited network.  There is no reason to use the same CUI for multiple visited networks, as that would enable the tracking of a user across multiple networks.
+
+Before suggesting a method for creating the CUI, we note that {{RFC4372}} Section 2.1 defines the CUI as being of data type 'string' ({{RFC8044}} Section 3.5).  {{RFC4372}} Section 2.1 further suggests that the value of the CUI is interpreted as an opaque token, similar to the Class attribute ({{RFC2865}} Section 5.25).  Some organizations create CUI values which use the Network Access Identifier (NAI) format as defined in {{RFC7542}}.  This format can allow the home network to be identified to the visited network, where the User-Name does not contain a realm.  Such formats SHOULD NOT be used unless all parties involved have agreed to this behavior.
+
+The CUI SHOULD be created via a construct similar to what is given below, where "+" indicates concatenation:
+
+~~~~
+CUI = HASH(visited network data + user identifier + key)
+~~~~
+
+This construct has the following conceptual parameters
+
+> HASH
+>
+>> A cryptographic hash function.
+
+> visited network data
+>
+>> Data which identifies the visited network.
+>>
+>> This data could be the Operator-Name attribute ({{RFC5580}} Section 4.1).
+
+> user identifier
+>
+>> The site-local user identifier.  For tunneled EAP methods such as PEAP or TTLS, this could be the user identity which is sent inside of the TLS tunnel.
+
+> key
+>
+>> A secret known only to the local network.  The key is generally a large random string.  It is used to help prevent dictionary attacks on the CUI.
+
+Where the CUI needs to be constant across multiple user sessions or devices, the key can be a static value.  It is generated once by the home network, and then stored for use in further CUI derivations.
+
+Where the CUI needs to be unique per session, the above derivation SHOULD still be used, except that the "key" value will instead be a random number which is ddifferent for each session.  Using such a design again decouples the CUI creation from any requirement that it is unique per session, or constant per user.  That decision can be changed at any time, and the only piece which needs to be updated is the derivation of the "key" field.  In contrast, if the CUI is generated completely randomly per session, then it may be difficult for a system to later change that behavior to allow the CUI to be constant for a particular user.
+
+If an NAI format is desired, the hash output can be converted to printable text, truncated if necessary to meet length limitations, and then an "@" character and a realm can be appended to it.  The resulting text string is then in NAI form.
+
+In short, the intent is for CUI to leak as little information as possible, and ideally be different for every session.  However, business agreements, legal requirements, etc. may mandate different behavior.  The intention of this section is not to mandate complete CUI privacy, but instead to clarify the trade-offs between CUI privacy and business realities.
 
 ## User-Password and Proxying
 
@@ -390,13 +449,15 @@ Client and server implementations SHOULD use programming techniques to securely 
 
 Organizations MAY still use User-Password attributes within their own systems, for reasons which we will explain in the next section.
 
-## PAP vs CHAP, MS-CHAP, etc.
+## PAP vs CHAP vs MS-CHAP, etc.
 
-Some organizations may desire to increase the security of their network by using alternate authentication methods such as CHAP or MS-CHAP.  These attempts are often misguided.  If simple password-based methods must be used, in almost all situations, the security of the network as a whole is increased by using User-Password in preference to CHAP or MS-CHAP.  The reason is found through a simple risk analysis.
+Some organizations may desire to increase the security of their network by using alternate authentication methods such as CHAP or MS-CHAP, instead of PAP.  These attempts are largely misguided.  If simple password-based methods must be used, in almost all situations, the security of the network as a whole is increased by using PAP in preference to CHAP or MS-CHAP.  The reason is found through a simple risk analysis, which we explain in more detail below.
 
-When PAP is used, any compromise of a system which sees the User-Password will result in the password leaking.  In contrast, when CHAP or MS-CHAP is used, the contents of those methods are sent in the clear.  As those values depend on the result of cryptographic operations, and are in theory secure from attackers.
+When PAP is used, any compromise of a system which sees the User-Password will result in that password leaking.  In contrast, when CHAP or MS-CHAP is used, those methods do not share the password, but instead a hashed transformation of it.  That hash output is in theory secure from attackers.  However, the hashes used (MD5 and MD4 respectively) are decades old, have been broken, and are known to be insecure.  Any security analysis which makes the claim that "User-Password insecure because it is protected with MD5" ignores the fact that the CHAP-Password attribute is constructed through substantially similar methods.
 
-However, any security analysis cannot stop with the wire protocol.  It must include all related systems which are affected by the choice of authentication methods.  In this case, the most important piece of the system affected by these choices is the database which stores the passwords.
+The difference between the two constructs is that the CHAP-Password depends on the hash of a visible Request Authenticator (or CHAP-Challenge) and the users password, while the obfuscated User-Password depends on the same Request Authenticator, and on the RADIUS shared secret.  For an attacker, the difference between the two calculations is minimal.  They can both be attacked with similar amounts of effort.
+
+Further, any security analysis can not stop with the wire protocol.  It must include all related systems which are affected by the choice of authentication methods.  In this case, the most important piece of the system affected by these choices is the database which stores the passwords.
 
 When PAP is used, the information stored in the database can be salted, and/or hashed in a form is commonly referred to as being in "crypt"ed form.  The incoming clear-text password then undergoes the "crypt" transformation, and the two "crypt"ed passwords are compared.  The passwords in the database are stored securely at all times, and any compromise of the database results in the disclosure of minimal information to an attacker.  That is, the attacker cannot easily obtain the clear-text passwords from the database compromise.
 
@@ -448,7 +509,7 @@ RFC Editor: This section may be removed before final publication.
 
 # Acknowledgements
 
-TBD.
+Thanks to the many reviewers and commenters for raising topics to discuss, and for providing insight into the issues related to increasing the security of RADIUS.  In no particular order, thanks to Margart Cullen, Alexander Clouter, and Josh Howlett.
 
 # Changelog
 
