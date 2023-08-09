@@ -1,7 +1,7 @@
 ---
 title: Deprecating RADIUS/UDP and RADIUS/TCP
 abbrev: Deprecating RADIUS
-docname: draft-dekok-radext-deprecating-radius-03
+docname: draft-dekok-radext-deprecating-radius-04
 
 stand_alone: true
 ipr: trust200902
@@ -102,11 +102,11 @@ As of the writing of this specification, RADIUS/UDP is still widely used, even t
 
 However, the problems with MD5 means that if a someone can view unencrypted RADIUS traffic, even a hobbyist attacker can crack all possible RADIUS shared secrets of eight characters or less.  Such attacks can also result in compromise of all passwords carried in the User-Password attribute.
 
-Even if a stronger packet signature method was used as in {{RFC6218}}, it would not fully address the issues with RADIUS.  Most information in RADIUS is sent in cleartext, and only a few attributes are hidden via obfuscation methods which rely on more "ad hoc" MD5 constructions.  The privacy implications of this openness are severe.
+Even if a stronger packet signature method was used as in {{RFC6218}}, it would not fully address the issues with RADIUS.  Most information in RADIUS is sent in clear-text, and only a few attributes are hidden via obfuscation methods which rely on more "ad hoc" MD5 constructions.  The privacy implications of this openness are severe.
 
 Any observer of non-TLS RADIUS traffic is able to obtain a substantial amount of personal identifiable information (PII) about users.  The observer can tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in {{RFC5580}}, a users location may be determined to within 15 or so meters outdoors, and with "meter-level accuracy indoors" {{WIFILOC}}.  An observer can also use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
 
-When RADIUS/UDP is used across the public Internet, the location of corporate executives can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be be compromised.  The negative implications for security and individual safety are obvious.
+When RADIUS/UDP is used across the public Internet, the location of individuals can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be be compromised.  The implications for security and individual safety are large, and negative.
 
 These issues are only partly mitigated when the attributes carried within RADIUS define their own methods to increase security and privacy.  For example, some authentication methods such EAP-TLS, EAP-TTLS, etc. allow for User-Name privacy and for more secure transport of passwords.  The use of MAC address randomization can limit device information identification to a particular manufacturer, instead of to a unique device.
 
@@ -116,7 +116,9 @@ It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no lon
 
 The use of a secure transport such as IPSec or TLS ensures complete privacy and security for all RADIUS traffic.  An observer is limited to knowing rough activity levels of a client or server.  That is, an observer can tell if there are a few users on a NAS, or many users on a NAS.  All other information is hidden from all observers.
 
-It is also possbile for an attacker to record the session traffic, and later crack the TLS session key.  This attack could comprise all traffic sent over that connection, including EAP session keys.  If the cryptographic methods provide forward secrecy ({{?RFC7525}} Section 6.3), then breaking one session provides no information about other sessions.  As such, it is RECOMMENDED that all cryptographic methods used to secure RADIUS conversations provide forward secrecy.  While forward secrecy will not protect individual sessions from attack, it will prevent attack on one session from being leveraged to attack other, unrelated, sessions.  AAA servers can also minimize the impact of such attacks using TLS connections with short lifetimes, though that practice can cause spurious errors in a proxy environment.
+It is also possible for an attacker to record the session traffic, and later crack the TLS session key.  This attack could comprise all traffic sent over that connection, including EAP session keys.  If the cryptographic methods provide forward secrecy ({{?RFC7525}} Section 6.3), then breaking one session provides no information about other sessions.  As such, it is RECOMMENDED that all cryptographic methods used to secure RADIUS conversations provide forward secrecy.  While forward secrecy will not protect individual sessions from attack, it will prevent attack on one session from being leveraged to attack other, unrelated, sessions.
+
+AAA servers should minimize the impact of such attacks by using a total throughput (recommended) or time based limit before replacing the session keys.  The session keys can be replaced though a process of either rekeying the existing connection, or by opening a new connection and deprecating the use of the original connection.  If the original connection if closed before a new connection is open, it can cause spurious errors in a proxy environment.
 
 The final attack possible in a AAA system is where one party in a AAA conversation is compromised or run by a malicious party.  This attack is made more likely by the extensive use of RADIUS proxy forwarding chains.  In that situation, every RADIUS proxy has full visibility into, and control over, the traffic it transports.  The solution here is to minimize the number of proxies involved, such as by using Dynamic Peer Discovery ({{?RFC7585}}.
 
@@ -125,6 +127,12 @@ The final attack possible in a AAA system is where one party in a AAA conversati
 The rest of this document begins a summary of issues with RADIUS, and shows just how trivial it is to crack RADIUS/UDP security.  We then mandate the use of secure transport, and describe what that means.  We give recommendations on how current systems can be migrated to using TLS.  We conclude with privacy and security considerations.
 
 As IPSec has been discussed previously in the context of RADIUS, we devote little time to it here, other than to say it is an acceptable solution.  As the bulk of the current efforts are focused on TLS, this document likewise focuses on TLS.
+
+While this document tries to be comprehensive, it is necessarily imperfect.  There may be issues which should have been included, but which were missed due to oversight or accident.  Any reader should be aware that there are good practices which are perhaps not documented here.  We recommend following reasonable practices, even if those practices are not written down in a public specification.
+
+There is a common tendency to suggest that a particular practice is "allowed" by a specification, simply because the specification does not forbid that practice.  This belief is wrong.  By their very nature, documents include a small number of permitted, required, and/or forbidden behaviors.  There are a much larger set of behaviors which are undefined.  That is, behaviors which are neither permitted nor forbidden.  Those behaviors may be good or bad, independent of what the specification says.
+
+Outside of specificaitons, there is also a large set of common practices and behaviors which have grown organically over time, but which have not been written into a specification.  These practices have been found to be valuable by implementors and administrators.  Deviations from these practices generally result in instabilities and incompatibilities between systems.  As a result, implementors should exercise caution when creating new behaviors which have not previously been seen in the space.  Such behaviors are likely to be wrong.
 
 # Terminology
 
@@ -140,7 +148,7 @@ As IPSec has been discussed previously in the context of RADIUS, we devote littl
 
 * RADIUS/TCP
 
-> RADIUS over the Transport Congestion Protocol {{RFC6613}}
+> RADIUS over the Transport Control Protocol {{RFC6613}}
 
 * RADIUS/TLS
 
@@ -192,7 +200,7 @@ Increasing the length of the shared secret a bit helps.  For secrets ten charact
 
 The brute-force attack is also trivially parallelizable.  Nation-states have sufficient resources to deploy hundreds to thousands of systems dedicated to these attacks.  That realization means that a "time to crack" of 24 years is simply expensive, but is not particularly difficult.
 
-Whether the above numbers  exactly correct, or only approximate is immaterial.  These attacks will only get better over time.  The cost to crack shared secrets will only go down.
+Whether the above numbers are exactly correct, or only approximate is immaterial.  These attacks will only get better over time.  The cost to crack shared secrets will only go down.
 
 Even worse, administrators do not always derive shared secrets from secure sources of random numbers.  The "time to crack" numbers given above are the absolute best case, assuming administrators follow best practices for creating secure shared secrets.  For shared secrets created manually by a person, the search space is orders of magnitude smaller than the best case outlined above.
 
@@ -223,7 +231,7 @@ Where {{RFC2866}} Section 3 says:
       hash value is stored in the Authenticator field of the
       Accounting-Request packet.
 
-Taken together, these defintions means that for CoA-Request packets, all attribute obfuscation is calculated with the Reply Authenticator being all zeroes.
+Taken together, these definitions means that for CoA-Request packets, all attribute obfuscation is calculated with the Reply Authenticator being all zeroes.
 
 {{RFC5176}} Section 3.6 allows for Tunnel-Password in CoA-Request packets:
 
@@ -286,15 +294,15 @@ The Message-Authenticator attribute was defined in {{RFC3579}} Section 3.2.  The
 
 Some RADIUS clients never use the Message-Authenticator attribute, even for the situations where it the {{RFC3579}} text suggests that it should be used.  When the Message-Authenticator attribute is missing from Access-Request packets, it is often possible to trivially forge or replay those packets.
 
-For example, an Access-Request packet containing CHAP-Password but which is missing Messge-Authenticator can be trivially forged.  If an attacker sees one packet such packet, it is possible to replace the CHAP-Password and CHAP-Challenge (or Request Authenticator) with values chosen by the attacket.  The attacker can then perform brute-force attacks on the RADIUS server in order to test passwords.  Similar attacks are possible for User-Password and MS-CHAP passwords.
+For example, an Access-Request packet containing CHAP-Password but which is missing Message-Authenticator can be trivially forged.  If an attacker sees one packet such packet, it is possible to replace the CHAP-Password and CHAP-Challenge (or Request Authenticator) with values chosen by the attacker.  The attacker can then perform brute-force attacks on the RADIUS server in order to test passwords.  Similar attacks are possible for User-Password and MS-CHAP passwords.
 
-This document therefore requires that RADIUS clients MUST include the Message-Authenticator in all Access-Request packets when UDP or TCP transport is used.  In contrast, when TLS-based transports are used, the Message-Authenticator attribute serves no purpose, and can be omitted, even when the Access-Request packet contains an EAP-Message attribute.  Servers receiving Acccess-Request packets over TLS-based transports SHOULD NOT silently discard the packet if it does not contain a Message-Authenticator attribute.  However, if the Message-Authenticator attributes is present, it still MUST be validated as discussed in {{RFC7360}} and {{RFC3579}}.
+This document therefore requires that RADIUS clients MUST include the Message-Authenticator in all Access-Request packets when UDP or TCP transport is used.  In contrast, when TLS-based transports are used, the Message-Authenticator attribute serves no purpose, and can be omitted, even when the Access-Request packet contains an EAP-Message attribute.  Servers receiving Access-Request packets over TLS-based transports SHOULD NOT silently discard the packet if it does not contain a Message-Authenticator attribute.  However, if the Message-Authenticator attributes is present, it still MUST be validated as discussed in {{RFC7360}} and {{RFC3579}}.
 
 ## Mandating Secure transports
 
 All systems sending RADIUS packets outside of secure networks MUST use either IPSec, RADIUS/TLS, or RADIUS/DTLS. It is RECOMMENDED, for operational and visibility reasons, that RADIUS/TLS or RADIUS/DTLS are preferred over IPSec.
 
-Unlike (D)TLS, use of IPSec means that applications are generally unaware of transport-layer security. Any problem with IPSec such as configuration issues, negotiation or re-keying problems are typically is presented to the RADIUS servers as 100% packet loss.  These issues may occur at any time, independent of any changes to a RADIUS application using that transport.  Further, network misconfigurations which remove all security are completely transparent to the RADIUS application: packets can be sent over an insecure link, and the RADIUS server is unaware of the failure of the security layer.
+Unlike (D)TLS, use of IPSec means that applications are generally unaware of transport-layer security. Any problem with IPSec such as configuration issues, negotiation or re-keying problems are typically  presented to the RADIUS servers as 100% packet loss.  These issues may occur at any time, independent of any changes to a RADIUS application using that transport.  Further, network misconfigurations which remove all security are completely transparent to the RADIUS application: packets can be sent over an insecure link, and the RADIUS server is unaware of the failure of the security layer.
 
 In contrast, (D)TLS gives the RADIUS application completely knowledge and control over transport-layer security.  The failure cases around (D)TLS are therefore often clearer, easier to diagnose and faster to resolve than failures in IPSec.
 
@@ -318,7 +326,7 @@ We recognize that RADIUS/UDP will still be in use for many years, and that new s
 
 All new security and privacy requirements in RADIUS MUST be provided by a secure transport layer such as TLS or IPSec.  We note that simply using IPsec is not always enough, as the use (or not) of IPsec is unknown to the RADIUS application.  For example, when the IPsec connection is down, the RADIUS application sees 100% packet loss for no reason which can be determined.  In contrast, a failed TLS connection may return a "connection refused" error to the application, or any one of many TLS errors indicating which exact part of the TLS conversion failed during negotiation.
 
-The restriction forbidding new cryptographic work in RADIUS does not apply to the data being transported in RADIUS attributes.  For example, a new authentication protocol could use new cryptographic methods, and would be permitted to be transported in RADIUS.  In that case, RADIUS serves as a transport layer for the authentication method, which is treated as opaque data for the purposes of Access-Request, Access-Challenge, etc.  There would be no need for RADIUS to define any new cryptographic methods in order to transport thos data.  Either the authentication method itself is secured (as with EAP-TLS), or the authentication data can be obfsucated (as with User-Password), or the entire RADIUS exchange can be secured via TLS or IPSec transport.
+The restriction forbidding new cryptographic work in RADIUS does not apply to the data being transported in RADIUS attributes.  For example, a new authentication protocol could use new cryptographic methods, and would be permitted to be transported in RADIUS.  In that case, RADIUS serves as a transport layer for the authentication method, which is treated as opaque data for the purposes of Access-Request, Access-Challenge, etc.  There would be no need for RADIUS to define any new cryptographic methods in order to transport this data.  Either the authentication method itself is secured (as with EAP-TLS), or the authentication data can be obfuscated (as with User-Password), or the entire RADIUS exchange can be secured via TLS or IPSec transport.
 
 Similarly, new specifications MAY define new attributes which use the obfuscation methods for User-Password as defined in {{RFC2865}} Section 5.2, or for Tunnel-Password as defined in {{RFC2868}} Section 3.5.  However, due to the issues noted above with the obfuscation method used for Tunnel-Password, that obfuscation method MUST only used for attributes which are sent Access-Request packets.  If the attribute needs to be send in another type of packet, then the protocol design is likely wrong, and needs to be revisited.  It is again a difficult choice to forbid the use of the Tunnel-Password obfuscation method, but we believe that doing so is preferable to allowing "secret" data to be obfuscated with only 15 bits of entropy.
 
@@ -355,23 +363,27 @@ This script reads 96 bits of random data from a secure source, encodes it in Bas
 
 Given the simplicity of creating strong secrets, there is no excuse for using weak shared secrets with RADIUS.  The management overhead of dealing with complex secrets is less than the management overhead of dealing with compromised networks.
 
-RADIUS implementers SHOULD provide tools for administrators which can create and manage secure shared secrets.
+RADIUS implementors SHOULD provide tools for administrators which can create and manage secure shared secrets.
 
 Given the insecurity of RADIUS, the absolute minimum acceptable security is to use strong shared secrets.  However, administrator overhead for TLS-PSK is not substantially higher than simple shared secrets, and TLS-PSK offers significantly increased security and privacy.
 
-# Increasing the Security of Insecure Transports
+# Increasing the Security of RADIUS Transports
 
-While we still permit the use of UDP and TCP transports in secure environments, there remain opportunities for increasing the security of those transport protocols.  The amount of personal identifiable information sent in packets should be minimized.  Information about the size, structure, and nature of the visited network should be omitted or anonymized.  The choice of authentication method also has security and privacy impacts.  Implementors and administrators need to be aware of all of these issues, and then make the best choice for their local network which balances their requirements on privacy, security, and cost.
+While we still permit the use of UDP and TCP transports in secure environments, there remain opportunities for increasing the security of those transport protocols.  The amount of personal identifiable information sent in packets should be minimized.  Information about the size, structure, and nature of the visited network should be omitted or anonymized.  The choice of authentication method also has security and privacy impacts.
+
+The recommendations here for increasing the security of RADIUS transports also applies when TLS is used.  TLS transports protect the RADIUS packets from observation by from third-parties.  However, TLS does not hide the content of RADIUS packets from intermediate proxies, such as in a roaming environment.  As such, the main path to minimizing the information sent to proxies is to minimize the number of proxies involved.
+
+Implementors and administrators need to be aware of all of these issues, and then make the best choice for their local network which balances their requirements on privacy, security, and cost.
 
 ## Minimizing Personal Identifiable Information
 
-One approach to increasing RADIUS privacy is to minimize the amount of PII which is sent in packets .Implementors of RADIUS products and administrators of RADIUS systems SHOULD ensure that only the minimum necessary PII is sent in RADIUS.
+One approach to increasing RADIUS privacy is to minimize the amount of PII which is sent in packets.  Implementors of RADIUS products and administrators of RADIUS systems SHOULD ensure that only the minimum necessary PII is sent in RADIUS.
 
 Where possible, identities should be anonymized (e.g. {{?RFC7542}} Section 2.4).  The use of anonymized identies means that the the Chargeable-User-Identifer {{?RFC4372}} should also be used.  Further discussion on this topic is below.
 
 Device information SHOULD be either omitted, or randomized.  e.g. MAC address randomization could be used on end-user devices.  The details behind this recommendation are the subject of ongoing research and development.  As such, we do not offer more specific recommendations here.
 
-Information aobut the visited network SHOULD be replaced or anonymized before packets are proxied outside of the local organizstion.  The attribute Operator-NAS-Identifier {{?RFC8559}} can be used to anonymize information about NASes in the local network.
+Information about the visited network SHOULD be replaced or anonymized before packets are proxied outside of the local organization.  The attribute Operator-NAS-Identifier {{?RFC8559}} can be used to anonymize information about NASes in the local network.
 
 Location information ({{RFC5580}} SHOULD either be omitted, or else it SHOULD be limited to the broadest possible information, such as country code. For example, {{I-D.tomas-openroaming}} says:
 
@@ -387,15 +399,15 @@ What we can do is to require that the home server MUST provide a unique CUI for 
 
 We note that the MAC address is likely the same across multiple user sessions on one network.  Therefore changing the CUI offers little additional benefit, as the user can still be tracked by the unchanging MAC address.  Never the less, we believe that having a unique CUI per session can be useful, because there is ongoing work on increasing user privacy by allowing more MAC address randomization.  If we were to recommend that the CUI remain constant across multiple sessions, that would in turn negate much of the effort being put into MAC address randomization.
 
-One reason to have a constant CUI value for a user (or user devices) on one network is that network access providers may need to enforce limits on simultaneous logins.  Network providers may also need to correlate user behavior across mutliple sessions in order to track and prevent abuse.  Both of these requirements are impossible if the CUI changes for every user session.
+One reason to have a constant CUI value for a user (or user devices) on one network is that network access providers may need to enforce limits on simultaneous logins.  Network providers may also need to correlate user behavior across multiple sessions in order to track and prevent abuse.  Both of these requirements are impossible if the CUI changes for every user session.
 
 The result is that there is a trade-off between user privacy and the needs of the local network.  While perfect user privacy is an admirable goal, perfect user privacy may also allow anonymous users to abuse the visited network.  The network would then likely simply refuse to provide network access.  Users may therefore have to accept some limitations on privacy, in order to obtain network access.
 
-We take a short digression here to give some recommendations for creating and managung of CUI.  We believe that these recommendations will help implementors satisfy the preceeding requirements, while not imposing undue burden on the implementations.
+We take a short digression here to give some recommendations for creating and managing of CUI.  We believe that these recommendations will help implementors satisfy the preceding requirements, while not imposing undue burden on the implementations.
 
 In general, the simplest way to track CUIs long term is to associate the CUI to user identity in some kind of cache or database.  This association could be created at the tail end of the authentication process, and before any accounting packets were received.  This association should generally be discarded after a period of time if no accounting packets are received.  If accounting packets are received, the CUI to user association should then be tracked along with the normal accounting data.
 
-The above method for tracking CUI works no matter how the CUI is generated.  If the CUI can be unique per ssesion, or it could be tied to a particular user identity across a long period of time.  The same CUI could also be associated with multiple devices.
+The above method for tracking CUI works no matter how the CUI is generated.  If the CUI can be unique per session, or it could be tied to a particular user identity across a long period of time.  The same CUI could also be associated with multiple devices.
 
 Where the CUI is not unique for each session, the only minor issue is the cost of the above method is that the association is stored on a per-session basis when there is no need for that to be done.  Storing the CUI per session means that is it possible to arbitrarily change how the CUI is calculated, with no impact on anything else in the system.  Designs such as this which decouple unrelated architectural elements are generally worth the minor extra cost.
 
@@ -409,7 +421,7 @@ The CUI SHOULD be created via a construct similar to what is given below, where 
 CUI = HASH(visited network data + user identifier + key)
 ~~~~
 
-This construct has the following conceptual parameters
+This construct has the following conceptual parameters.
 
 > HASH
 >
@@ -431,9 +443,39 @@ This construct has the following conceptual parameters
 
 Where the CUI needs to be constant across multiple user sessions or devices, the key can be a static value.  It is generated once by the home network, and then stored for use in further CUI derivations.
 
-Where the CUI needs to be unique per session, the above derivation SHOULD still be used, except that the "key" value will instead be a random number which is ddifferent for each session.  Using such a design again decouples the CUI creation from any requirement that it is unique per session, or constant per user.  That decision can be changed at any time, and the only piece which needs to be updated is the derivation of the "key" field.  In contrast, if the CUI is generated completely randomly per session, then it may be difficult for a system to later change that behavior to allow the CUI to be constant for a particular user.
+Where the CUI needs to be unique per session, the above derivation SHOULD still be used, except that the "key" value will instead be a random number which is different for each session.  Using such a design again decouples the CUI creation from any requirement that it is unique per session, or constant per user.  That decision can be changed at any time, and the only piece which needs to be updated is the derivation of the "key" field.  In contrast, if the CUI is generated completely randomly per session, then it may be difficult for a system to later change that behavior to allow the CUI to be constant for a particular user.
 
 If an NAI format is desired, the hash output can be converted to printable text, truncated if necessary to meet length limitations, and then an "@" character and a realm can be appended to it.  The resulting text string is then in NAI form.
+
+We note that the above recommendation is not invertible.  That is, given a particular CUI, it is not possible to determine which visited network or user identifier was used to create it.  If it is necessary to use the CUI to determine which user is associated with it, the local network still needs to store the full set of CUI values which are associated with each user.
+
+If this tracking is too complex for a local network, it is possible to create the CUI via an invertible encryption process as follows:
+
+~~~~
+CUI = ENCRYPT(key, visited network data + user identifier)
+~~~~
+
+This construct has the following conceptual parameters.
+
+> ENCRYPT
+>
+>> A cryptographically secure encryption function
+
+> key
+>
+>> The encryption key.  Note that the same key must not be used for more both hashing and encryption.
+
+> visited network data
+>
+>> Data which identifies the visited network.
+>>
+>> This data could be the Operator-Name attribute ({{RFC5580}} Section 4.1).
+
+> user identifier
+>
+>> The site-local user identifier.  For tunneled EAP methods such as PEAP or TTLS, this could be the user identity which is sent inside of the TLS tunnel.
+
+However, the use of a hash-based method is RECOMMENDED.
 
 In short, the intent is for CUI to leak as little information as possible, and ideally be different for every session.  However, business agreements, legal requirements, etc. may mandate different behavior.  The intention of this section is not to mandate complete CUI privacy, but instead to clarify the trade-offs between CUI privacy and business realities.
 
@@ -497,9 +539,9 @@ The primary focus of this document is addressing security and privacy considerat
 
 Deprecating insecure transport for RADIUS, and requiring secure transport means that many historical security issues with the RADIUS protocol no longer apply, or their impact is minimized.
 
-We reiterate the discussion above, that any security analysis must be done on the system as a whole.  It is not enough to put an expensive lock on the front door of a house while leaving the window next to it open, and then declare the house to be "secure". Any simple checklist approach to security is at best naive, and at worst misleading.
+We reiterate the discussion above, that any security analysis must be done on the system as a whole.  It is not enough to put an expensive lock on the front door of a house while leaving the window next to it open, and then declare the house to be "secure". Any approach to security based on a simple checklist is at best naive, more truthfully is deeply misleading, and at worst such practices will serve to decrease security.
 
-Implementors and administrators need to be aware of the issues raised in this document.  They cam then make the best choice for their local network which balances their requirements on privacy, security, and cost.
+Implementors and administrators need to be aware of the issues raised in this document.  They can then make the best choice for their local network which balances their requirements on privacy, security, and cost.
 
 # IANA Considerations
 
@@ -509,7 +551,7 @@ RFC Editor: This section may be removed before final publication.
 
 # Acknowledgements
 
-Thanks to the many reviewers and commenters for raising topics to discuss, and for providing insight into the issues related to increasing the security of RADIUS.  In no particular order, thanks to Margart Cullen, Alexander Clouter, and Josh Howlett.
+Thanks to the many reviewers and commenters for raising topics to discuss, and for providing insight into the issues related to increasing the security of RADIUS.  In no particular order, thanks to Margaret Cullen, Alexander Clouter, and Josh Howlett.
 
 # Changelog
 
