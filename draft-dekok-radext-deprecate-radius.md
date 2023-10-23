@@ -1,7 +1,7 @@
 ---
 title: Deprecating Insecure Practices in RADIUS
 abbrev: Deprecating RADIUS
-docname: draft-dekok-radext-deprecating-radius-04
+docname: draft-dekok-radext-deprecating-radius-05
 
 stand_alone: true
 ipr: trust200902
@@ -630,5 +630,7 @@ Thanks to the many reviewers and commenters for raising topics to discuss, and f
 * 03 - add text on CUI.  Add notes on PAP vs CHAP security
 
 * 04 - add text on security of MS-CHAP.  Rearrange and reword many sections for clarity.
+
+* 05 - Rework title to deprecating "insecure practices".  Clarifications based on WG feedback.
 
 --- back
