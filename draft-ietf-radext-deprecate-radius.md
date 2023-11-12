@@ -1,7 +1,7 @@
 ---
 title: Deprecating Insecure Practices in RADIUS
 abbrev: Deprecating RADIUS
-docname: draft-dekok-radext-deprecating-radius-05
+docname: draft-ietf-radext-deprecating-radius-00
 
 stand_alone: true
 ipr: trust200902
@@ -87,7 +87,7 @@ venue:
 
 RADIUS crypto-agility was first mandated as future work by RFC 6421.  The outcome of that work was the publication of RADIUS over TLS (RFC 6614) and RADIUS over DTLS (RFC 7360) as experimental documents.  Those transport protocols have been in wide-spread use for many years in a wide range of networks.  They have proven their utility as replacements for the previous UDP (RFC 2865) and TCP (RFC 6613) transports.  With that knowledge, the continued use of insecure transports for RADIUS has serious and negative implications for privacy and security.
 
-This document formally deprecates using the User Datagram Protocol (UDP) and of the Transmission Control Protocol (TCP) as transport protocols for RADIUS. These transports are permitted inside of secure networks, but their use in secure networks is still discouraged.  For all other environments, the use of secure transports such as IPsec or TLS is mandated.  We also discuss additional security issues with RADIUS deployments, and give recommendations for practices which increase security and privacy.
+This document formally deprecates using the User Datagram Protocol (UDP) and of the Transmission Control Protocol (TCP) as transport protocols for RADIUS. These transports are permitted inside of secure networks, but their use in those networks is still discouraged.  For all other environments, the use of secure transports such as IPsec or TLS is mandated.  We also discuss additional security issues with RADIUS deployments, and give recommendations for practices which increase security and privacy.
 
 --- middle
 
@@ -120,7 +120,7 @@ Even if a stronger packet signature method was used as in {{RFC6218}}, it would 
 
 Any observer of non-TLS RADIUS traffic is able to obtain a substantial amount of personal identifiable information (PII) about users.  The observer can tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in {{RFC5580}}, a users location may be determined to within 15 or so meters outdoors, and with "meter-level accuracy indoors" {{WIFILOC}}.  An observer can also use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
 
-When RADIUS/UDP is used across the public Internet, the location of individuals can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be be compromised.  Even using CHAP-Password offers minimal protection, as the cost of cracking the underlying password is similar to the cost of cracking the shared secret.  MS-CHAP ({{RFC2433}} and {{RFC2759}}) is significantly worse for security, as it can be trivially cracked with minimal resources even if the shared secret is not known ([](#ms-chap)).
+When RADIUS/UDP is used across the public Internet, the location of individuals can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be compromised.  Even using CHAP-Password offers minimal protection, as the cost of cracking the underlying password is similar to the cost of cracking the shared secret.  MS-CHAP ({{RFC2433}} and {{RFC2759}}) is significantly worse for security, as it can be trivially cracked with minimal resources even if the shared secret is not known ([](#ms-chap)).
 
 The implications for security and individual safety are large, and negative.
 
@@ -128,7 +128,7 @@ These issues are only partly mitigated when the authentication methods carried w
 
 However, these authentication methods are not always used, or are not always available.  Even if these methods were used ubiquitously, they do not protect all of the information which is publicly available over RADIUS/UDP or RADIUS/TCP transports.  And even when TLS-based EAP methods are used, implementations have historically often skipped certificate validation, leading to password compromise ({{SPOOFING}}).  In many cases, users were not even aware that the server certificate was incorrect or spoofed, which meant that there was no way for the user to detect that anything was wrong.  Their passwords were simply handed to a spoofed server, with little possibility for the user to take any action to stop it.
 
-It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider INternet.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give many recommendations for practices which increase security and privacy.
+It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give many recommendations for practices which increase security and privacy.
 
 ## Simply using IPSec or TLS is not enough
 
@@ -222,7 +222,7 @@ This is an attack which is feasible today for a hobbyist. Increasing the size of
 
 Increasing the length of the shared secret has a larger impact on the cost of cracking.  For secrets ten characters long, one GPU can search a 64-character space in about six months, and a 93 character space would take approximately 24 years.
 
-This brute-force attack is also trivially parallelizable.  Nation-states have sufficient resources to deploy hundreds to thousands of systems dedicated to these attacks.  That realization means that a "time to crack" of 24 years is simply expensive, but is not particularly difficult.  A thousand commodity CPUs are enough to reduce the crack time from 24 years to a little over a week.
+This brute-force attack is also trivially parallelizable.  Nation-states have sufficient resources to deploy hundreds to thousands of systems dedicated to these attacks.  That realization means that a "time to crack" of 24 years is simply expensive, but does not take much "wall clock" time.  A thousand commodity CPUs are enough to reduce the crack time from 24 years to a little over a week.
 
 Whether the above numbers are precise, or only approximate is immaterial.  These attacks will only get better over time.  The cost to crack shared secrets will only go down over time.
 

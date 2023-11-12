@@ -1,4 +1,4 @@
-DRAFT	:= draft-dekok-radext-deprecate-radius
+DRAFT	:= draft-ietf-radext-deprecate-radius
 VERSION	:= $(shell sed -n -e'/docname/s,.*[^0-9]*-\([0-9]*\).*,\1,p' ${DRAFT}.md )
 EXAMPLES =
 
