@@ -77,6 +77,18 @@ informative:
        name: Sensepost
      format:
        TXT: https://github.com/sensepost/assless-chaps
+   WBA:
+     title: "RADIUS Accounting Assurance"
+     author:
+       name: Wireless Broadband Alliance
+     format:
+       TXT: https://wballiance.com/radius-accounting-assurance/
+   RADEXT118:
+     title: "RADIUS Accounting Assurance at IETF 118"
+     author:
+       name: Wireless Broadband Alliance
+     format:
+       TXT: https://youtu.be/wwmYSItcQt0?t=3953
 
 venue:
   group: RADEXT
@@ -593,6 +605,26 @@ The best way to avoid compromise of proxies is to eliminate proxies entirely.  T
 
 However, the server on the visited network still acts as a proxy between the NAS and the home network.  As a result, all of the above analysis still applies when {{?RFC7585}} peer discovery is used.
 
+## Accounting Considered Imperfect
+
+The use of RADIUS/UDP for accounting means that accounting is inherently unreliable.  Unreliable accounting means that different entities in the network can have different views of accounting traffic.  These differences can have multiple impacts, including incorrect views of who is on the network, to disagreements about financial obligations.  These issues are discussed in substantial detail in {{?RFC2975}}, and we do not repeat those discussions here.  We do, however, summarize a few key issues.  Sites which use accounting SHOULD be aware of the issues raised in {{?RFC2975}}, and the limitations of the suggested solutions.
+
+Using a reliable transport such as RADIUS/TLS makes it more likely that accounting packets are delivered, and that acknowledgements are received.  Reducing the number of proxies means that there are fewer disparate systems which need to be reconciled.  Using non-volatile storage for accounting packets means that a system can reboot with minimal loss of accounting data.  Using interim accounting updates means that transient network issues or data losses can be corrected by later updates.
+
+Systems which perform accounting are also subject to significant operational loads.  Wheres authentication and authorization may use multiple packets, those packets are sent at session start, and then never again.  In contrast, accounting packets can be sent for the lifetime of a session, which may be hours or even days.  There is a large cost to receiving, processing, and storing volumes of accounting data.
+
+However, even with all of the above concerns addressed, accounting is still imperfect.  The obvious way to increase the accuracy of accounting data is to increase the rate at which interim updates are sent, but doing so also increases the load on the servers which process the accounting data.  At some point, the trade-off of cost versus benefit becomes negative.
+
+There is no perfect solution here.  Instead, there are simply a variety of imperfect trade-offs.
+
+### Incorrect Accounting Data
+
+Even if all accounting packets were delivered and stored without error, there is no guarantee that the contents of those packets are in any way reasonable.  The Wireless Broadband Alliance RADIUS Accounting Assurance {{WBA}} group has been investigating these issues.  While the results are not yet public, a presentation was made at IETF 118 in the RADEXT working group {{RADEXT118}}.
+
+The data presented indicated that the WBA saw just about every possible counter in RADIUS accouting packets as containing data which was blatantly wrong or contradictory.  Some examples include extremely short sessions which have impossibly large amounts of data being downloaded, or large amounts of data being downloaded while claiming neglible packet counters, leading to absurdly large packet sizes.  The only conclusion from this analysis is that RADIUS clients act as if it is better to produce incorrect accounting data rather than producing no data.  This lack of care is disappointing.
+
+It should go without saying that accounting systems need to produce correct data.  However, {{RFC2865}} makes no requirement that the accounting data transported in RADIUS is correct, or is even vaguely realistic.  We therefore say that systems which produce accounting data MUST generate correct, accurate, and reasonably precise data.  Vendors of networking equipment SHOULD test their systems to verify that the data they produce is accurate.
+
 # Privacy Considerations
 
 The primary focus of this document is addressing privacy and security considerations for RADIUS.
@@ -632,5 +664,9 @@ Thanks to the many reviewers and commenters for raising topics to discuss, and f
 * 04 - add text on security of MS-CHAP.  Rearrange and reword many sections for clarity.
 
 * 05 - Rework title to deprecating "insecure practices".  Clarifications based on WG feedback.
+
+* 00 - adoption by WG.
+
+* 01 - review from Bernard Aboba.  Added discussion on accounting, clarified and re-arranged text.
 
 --- back
