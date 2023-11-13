@@ -1,7 +1,7 @@
 ---
 title: Deprecating Insecure Practices in RADIUS
 abbrev: Deprecating RADIUS
-docname: draft-ietf-radext-deprecating-radius-00
+docname: draft-ietf-radext-deprecating-radius-01
 
 stand_alone: true
 ipr: trust200902
@@ -77,18 +77,24 @@ informative:
        name: Sensepost
      format:
        TXT: https://github.com/sensepost/assless-chaps
-   WBA:
+  WBA:
      title: "RADIUS Accounting Assurance"
      author:
-       name: Wireless Broadband Alliance
+       name: "Wireless Broadband Alliance"
      format:
        TXT: https://wballiance.com/radius-accounting-assurance/
-   RADEXT118:
+  RADEXT118:
      title: "RADIUS Accounting Assurance at IETF 118"
      author:
-       name: Wireless Broadband Alliance
+       name: "Wireless Broadband Alliance"
      format:
        TXT: https://youtu.be/wwmYSItcQt0?t=3953
+  PWNED:
+     title: "Have I been Pwned"
+     author:
+       name: "Troy Hunt"
+     format:
+       TXT: https://haveibeenpwned.com/
 
 venue:
   group: RADEXT
@@ -99,7 +105,7 @@ venue:
 
 RADIUS crypto-agility was first mandated as future work by RFC 6421.  The outcome of that work was the publication of RADIUS over TLS (RFC 6614) and RADIUS over DTLS (RFC 7360) as experimental documents.  Those transport protocols have been in wide-spread use for many years in a wide range of networks.  They have proven their utility as replacements for the previous UDP (RFC 2865) and TCP (RFC 6613) transports.  With that knowledge, the continued use of insecure transports for RADIUS has serious and negative implications for privacy and security.
 
-This document formally deprecates using the User Datagram Protocol (UDP) and of the Transmission Control Protocol (TCP) as transport protocols for RADIUS. These transports are permitted inside of secure networks, but their use in those networks is still discouraged.  For all other environments, the use of secure transports such as IPsec or TLS is mandated.  We also discuss additional security issues with RADIUS deployments, and give recommendations for practices which increase security and privacy.
+It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give many recommendations for practices which increase security and privacy.
 
 --- middle
 
@@ -107,7 +113,13 @@ This document formally deprecates using the User Datagram Protocol (UDP) and of 
 
 The RADIUS protocol {{RFC2865}} was first standardized in 1997, though its roots go back much earlier to 1993.  The protocol uses MD5 {{RFC1321}} to sign some packets types, and to obfuscate certain attributes such as User-Password.  As originally designed, Access-Request packets were entirely unauthenticated, and could be trivially spoofed as discussed in {{RFC3579}} Section 4.3.2.  In order to prevent such spoofing, that specification defined the Message-Authenticator attribute ({{RFC3579}} Section 3.2) which allowed for packets to carry a signature based on HMAC-MD5.
 
-The state of MD5 security was discussed in {{RFC6151}}, which led to the state of RADIUS security being reviewed in {{RFC6421}} Section 3.  The outcome of that review was the remainder of {{RFC6421}}, which created crypto-agility requirements for RADIUS.
+The state of MD5 security was discussed in {{RFC6151}}, which led to the state of RADIUS security being reviewed in {{RFC6421}} Section 3.  The outcome of that review was the remainder of {{RFC6421}}, which created crypto-agility requirements for RADIUS.  {{RFC6151}} Section 2 states:
+
+> MD5 is no longer acceptable where collision resistance is required such as digital signatures.
+
+This text is directly applicable to RADIUS.  Despite {{RFC6151}} being over a decade old as of the time of this writing, there has been no progress towards addressing the use of MD5 in the RADIUS protocol.  This document addresses that problem.
+
+It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give many recommendations for practices which increase security and privacy.
 
 RADIUS was historically secured with IPSec, as described in {{RFC3579}} Section 4.2:
 
@@ -126,21 +138,23 @@ RADIUS/TLS {{RFC6614}} and RADIUS/DTLS {{RFC7360}} were then defined in order to
 
 As of the writing of this specification, RADIUS/UDP is still widely used, even though it depends on MD5 and "ad hoc" constructions for security.  While MD5 has been broken, it is a testament to the design of RADIUS that there have been (as yet) no attacks on RADIUS Authenticator signatures which are stronger than brute-force.
 
-However, the problems with MD5 means that if a someone can view unencrypted RADIUS traffic, even a hobbyist attacker can crack all possible RADIUS shared secrets of eight characters or less.  Such attacks can also result in compromise of all passwords carried in the User-Password attribute.
+However, the problems with MD5 means that if a someone can view RADIUS/UDP traffic, a hobbyist attacker can crack all possible RADIUS shared secrets of eight characters in not much more than an hour.  An more resourceful attacker (e.g. a nation-state) can crack much longer shared secrets with only modest expenditures.  See [](#cracking) below for a longer discussion of this topic.
 
-Even if a stronger packet signature method was used as in {{RFC6218}}, it would not fully address the issues with RADIUS.  Most information in RADIUS is sent in clear-text, and only a few attributes are hidden via obfuscation methods which rely on more "ad hoc" MD5 constructions.  The privacy implications of this openness are severe.
+Cracking the shared secret will also result in compromise of all passwords carried in the User-Password attribute.  Even using CHAP-Password offers minimal protection, as the cost of cracking the underlying password is similar to the cost of cracking the shared secret.  MS-CHAP ({{RFC2433}} and {{RFC2759}}) is significantly worse for security, as it can be trivially cracked with minimal resources even if the shared secret is not known ([](#ms-chap)).
+
+The use of Message-Authenticator does not help.  The Message-Authenticator attribute is a later addition to RADIUS, and does does not replace the original MD5-based packet signatures.  While it therefore offers a stronger protection, it does not change the cost of attacking the shared secret.  Moving to a stronger packet signatures (e.g. {{RFC6218}}) would still not fully address the issues with RADIUS, as the protocol still has privacy issues unrelated to the the security of packet signatures.
+
+Most information in RADIUS is sent in clear-text, and only a few attributes are hidden via obfuscation methods which rely on more "ad hoc" MD5 constructions.  The privacy implications of this openness are severe.
 
 Any observer of non-TLS RADIUS traffic is able to obtain a substantial amount of personal identifiable information (PII) about users.  The observer can tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in {{RFC5580}}, a users location may be determined to within 15 or so meters outdoors, and with "meter-level accuracy indoors" {{WIFILOC}}.  An observer can also use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
 
-When RADIUS/UDP is used across the public Internet, the location of individuals can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be compromised.  Even using CHAP-Password offers minimal protection, as the cost of cracking the underlying password is similar to the cost of cracking the shared secret.  MS-CHAP ({{RFC2433}} and {{RFC2759}}) is significantly worse for security, as it can be trivially cracked with minimal resources even if the shared secret is not known ([](#ms-chap)).
+When RADIUS/UDP is used across the public Internet, a common Wi-Fi configuration allows the location of individuals can potentially be tracked in real-time (usually 10 minute intervals), to within 15 meters.  Their devices can be identified, and tracked.  Any passwords they send via the User-Password attribute can be compromised.  Even when the packets do not contain any {{RFC5580}} location information for the user, the packets usually contain the MAC address of the Wi-Fi access point.  There are multiple services selling databases which correlate Wi-Fi access point MAC addresses and physical location down to a similar 15 meter resolution.
 
 The implications for security and individual safety are large, and negative.
 
 These issues are only partly mitigated when the authentication methods carried within RADIUS define their own processes for increased security and privacy.  For example, some authentication methods such EAP-TLS, EAP-TTLS, etc. allow for User-Name privacy and for more secure transport of passwords via the use of TLS.  The use of MAC address randomization can limit device information identification to a particular manufacturer, instead of to a unique device.
 
 However, these authentication methods are not always used, or are not always available.  Even if these methods were used ubiquitously, they do not protect all of the information which is publicly available over RADIUS/UDP or RADIUS/TCP transports.  And even when TLS-based EAP methods are used, implementations have historically often skipped certificate validation, leading to password compromise ({{SPOOFING}}).  In many cases, users were not even aware that the server certificate was incorrect or spoofed, which meant that there was no way for the user to detect that anything was wrong.  Their passwords were simply handed to a spoofed server, with little possibility for the user to take any action to stop it.
-
-It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give many recommendations for practices which increase security and privacy.
 
 ## Simply using IPSec or TLS is not enough
 
@@ -202,27 +216,29 @@ It is RECOMMENDED that implementations follow widely accepted practices which ha
 
 > Network Access Server, which is a RADIUS client.
 
+In order to continue the terminology of {{RFC2865}}, we describe the Request Authenticator, Response Authenticator, and Message-Authentor as "signing" the packets.  This terminology is not consistent with modern cryptographic terms, but using other terminology could be misleading.  The reader should be assured that no modern cryptographic processes are used with RADIUS/UDP.
+
 # Overview of issues with RADIUS
 
 There are a large number of issues with RADIUS.   The most serious is that RADIUS sends most information "in the clear", with obvious privacy implications.
 
-Further, MD5 has been broken for over a decade, as summarized in {{RFC6151}}.  For traffic sent across the Internet, no protocol should depend on MD5 for security.  Even if MD5 was not broken, computers have gotten substantially faster in the past thirty years.  This speed increase makes it possible for the average hobbyist to perform brute-force attacks to crack even seemingly complex shared secrets.
+Further, as summarized in {{RFC6151}} Section 2, it has been known for over a decada that it is inappropriate to use MD5 for digital signatures and cryptography.  For traffic sent across the Internet, no protocol should depend on MD5 for security.  Even if MD5 was not insecure, computers have gotten substantially faster in the past thirty years.  This speed increase makes it possible for the average hobbyist to perform brute-force attacks to crack even seemingly complex shared secrets.
 
 We address each of these issues in detail below.
 
 ## Information is sent in Clear Text
 
-Other than a few attributes such as User-Password, all RADIUS traffic is sent "in the clear".  The resulting data exposure has a large number of privacy issues.  We refer to {{RFC6973}}, and specifically to Section 5 of that document for detailed discussion.  RADIUS/UDP and RADIUS/TCP are vulnerable to all of the issues raised by {{RFC6973}}.
+Other than a few attributes such as User-Password, all RADIUS traffic is sent "in the clear" when using UDP or TCP transports.  Even when TLS is used, all RADIUS traffic (including User-Password) is visible to proxies.  The resulting data exposure has a large number of privacy issues.  We refer to {{RFC6973}}, and specifically to Section 5 of that document for detailed discussion, and to Section 6 of {{RFC6973}} for recommendations on threat mitigations.
 
-There are clear privacy and security information with sending user identifiers, and user locations {{RFC5580}} in clear-text across the Internet.  As such, the use of clear-text protocols across insecure networks is no longer acceptable.
+Further discussion of location privacy is given in {{?RFC6280}}, which defines an "Architecture for Location and Location Privacy in Internet Applications".  However, that work was too late to have any practical impact on the design of the RADIUS protocol, as  {{RFC5580}} had already been published.
+
+The use of clear-text protocols across insecure networks is no longer acceptable.  Using clear-text protocols in network which are believed to be secure is not much better.  The solution is to use secure protocols, and to minimize the amount of private data which is being transported.
 
 ## MD5 has been broken
 
-Attacks on MD5 are summarized in part in {{RFC6151}}. While there have not been many new attacks in the decade since {{RFC6151}} was published, that does not mean that further attacks do not exist.  It is more likely that no one is looking for new attacks.
+Attacks on MD5 are summarized in part in {{RFC6151}}. While there have not been many new attacks in the decade since that document was published, that does not mean that further attacks do not exist.  It is more likely that no one is looking for new attacks.
 
-It is reasonable to expect that new research can further break MD5, but also that such research may not be publicly available.
-
-## Complexity of cracking RADIUS shared secrets
+## Cracking RADIUS shared secrets is not hard  {#cracking}
 
 The cost of cracking a a shared secret can only go down over time as computation becomes cheaper.  The issue is made worse because of the way MD5 is used to sign RADIUS packets.  The attacker does not have to calculate the hash over the entire packet, as the hash prefix can be calculated once, and then cached.  The attacker can then begin the attack with that hash prefix, and brute-force only the shared secret portion.
 
@@ -316,6 +332,16 @@ This chain of unfortunate definitions means that there is only 15 bits of entrop
 
 Due to the above issues, implementations and new specifications SHOULD NOT permit obfuscated attributes to be used in CoA-Request or Disconnect-Request packets.
 
+## TLS-based EAP methods, RADIUS/TLS, and IPSec
+
+The above analysis as to security and privacy issues focusses on RADIUS/UDP and RADIUS/TCP.  These issues are partly mitigated through the use secure transports, but it is still possible for information to "leak".
+
+When TLS-based EAP methods such as TTLS or PEAP are used, they still transport passwords in an insecure form.  It is possible for an authentication server to terminal the TLS tunnel, and then proxy the inner data over RADIUS/UDP.  The design of both TTLS and PEAP make this process fairly trivial.  The inner data for TTLS is in Diameter AVP format, which can be trivially transformed to RADIUS attributes.  The inner data for PEAP is commonly EAP-MSCHAPv2, which can also be trivially transformed to a RADIUS EAP-Message attribute.
+
+Similar issues apply to RADIUS/TLS and IPSec.  A proxy could terminate the secure tunnel, and forward the RADIUS packets over an insecure transport protocol.  While this process could arguably be seen as a misconfiguration issue, it is never the less possible due to the design of the RADIUS protocol.
+
+The only solution to either issue would be to create a new protocol which is secure by design.  Unfortunately that path is not possible, and we are left with the recommendations contained in this document.
+
 # All short Shared Secrets have been compromised
 
 Unless RADIUS packets are sent over a secure network (IPsec, TLS, etc.), administrators SHOULD assume that any shared secret of 8 characters or less has been immediately compromised.  Administrators SHOULD assume that any shared secret of 10 characters or less has been compromised by an attacker with significant resources.  Administrators SHOULD also assume that any private information (such as User-Password) which depends on such shared secrets has also been compromised.
@@ -328,15 +354,15 @@ The solution to an insecure protocol which uses thirty year-old cryptography is 
 
 ## Deprecating UDP and TCP as transports
 
-RADIUS/UDP and RADIUS/TCP MUST NOT be used outside of secure networks.  A secure network is one which is known to be safe from eavesdroppers, attackers, etc.  For example, if IPsec is used between two systems, then those systems may use RADIUS/UDP or RADIUS/TCP over the IPsec connection.
+RADIUS/UDP and RADIUS/TCP MUST NOT be used outside of secure networks.  A secure network is one which is believed to be safe from eavesdroppers, attackers, etc.  For example, if IPsec is used between two systems, then those systems may use RADIUS/UDP or RADIUS/TCP over the IPsec connection.
 
-Similarly, RADIUS/UDP and RADIUS/TCP could be used in secure management networks.  However, administrators should not assume that such uses are always secure.  An attacker who breaks into a key system could use that access to view RADIUS traffic, and thus be able to attack it.  Similarly, a network misconfiguration could result in the RADIUS traffic being sent over an insecure network.
+However, administrators should not assume that such uses are always secure.  An attacker who breaks into a critical system could use that access to view RADIUS traffic, and thus be able to attack it.  Similarly, a network misconfiguration could result in the RADIUS traffic being sent over an insecure network.
 
 Neither the RADIUS client nor the RADIUS server would be aware of any network misconfiguration (e.g. such as could happen with IPSec).  Neither the RADIUS client nor the RADIUS server would be aware of any attacker snooping on RADIUS/UDP or RADIUS/TCP traffic.
 
 In contrast, when TLS is used, the RADIUS endpoints are aware of all security issues, and can enforce any necessary security policies.
 
-Using RADIUS/UDP and RADIUS/TCP in any environment is therefore NOT RECOMMENDED.
+Any use of RADIUS/UDP and RADIUS/TCP is therefore NOT RECOMMENDED.
 
 ## Mandating Secure transports
 
@@ -372,9 +398,9 @@ Similarly, new specifications MAY define new attributes which use the obfuscatio
 
 # Migration Path and Recommendations
 
-We recognize that it is difficult to upgrade legacy devices with new cryptographic protocols and user interfaces.  The problem is made worse because the volume of RADIUS devices which are in use.  The exact number is unknown, and can only be approximated.  Our best guess is that at the time of this writing, there could be in the order of hundreds of thousands, if not millions of RADIUS/UDP devices in daily use.
+We recognize that it is difficult to upgrade legacy devices with new cryptographic protocols and user interfaces.  The problem is made worse because the volume of RADIUS devices which are in use.  The exact number is unknown, and can only be approximated.  Our best guess is that at the time of this writing there are likely to be millions of RADIUS/UDP devices in daily use.  It takes significant time and effort to correct the deficiencies of all of these devices.
 
-We therefore need to define a migration path to using secure transports.  We give a a number of migration steps which could be done independently.  We recommend increased entropy for shared secrets.  We also mandate the use of Message-Authenticator in all Access-Request packets for RADIUS/UDP and RADIUS/TCP.  Finally, where {{RFC6614}} Section 2.3 makes support for TLS-PSK optional, we suggest that RADIUS/TLS and RADIUS/DTLS implementations SHOULD support TLS-PSK.
+We therefore need to define a migration path to using secure transports.  In the following sections, we give a number of migration steps which could be done independently.  We recommend increased entropy for shared secrets.  We also mandate the use of Message-Authenticator in all Access-Request packets for RADIUS/UDP and RADIUS/TCP.  Finally, where {{RFC6614}} Section 2.3 makes support for TLS-PSK optional, we suggest that RADIUS/TLS and RADIUS/DTLS implementations SHOULD support TLS-PSK.
 
 ## Shared Secrets {#shared-secrets}
 
@@ -539,7 +565,7 @@ However, the use of a hash-based method is RECOMMENDED.
 
 In short, the intent is for CUI to leak as little information as possible, and ideally be different for every session.  However, business agreements, legal requirements, etc. may mandate different behavior.  The intention of this section is not to mandate complete CUI privacy, but instead to clarify the trade-offs between CUI privacy and business realities.
 
-## User-Password and Proxying
+## User-Password Visibility
 
 The design of RADIUS means that when proxies receive Access-Request packets, the clear-text contents of the User-Password attribute are visible to the proxy.  Despite various claims to the contrary, the User-Password attribute is never sent "in the clear" over the network.  Instead, the password is protected by TLS (RADIUS/TLS) or via the obfuscation methods defined in {{RFC2865}} Section 5.2.  However, the nature of RADIUS means that each proxy must first undo the password obfuscation of {{RFC2865}}, and then re-do it when sending the outbound packet.  As such, the proxy has the clear-text password visible to it, and stored in its application memory.
 
@@ -551,29 +577,63 @@ Client and server implementations SHOULD use programming techniques to securely 
 
 Organizations MAY still use User-Password attributes within their own systems, for reasons which we will explain in the next section.
 
+## Minimize the use of Proxies
+
+The design of RADIUS means that even when RADIUS/TLS is used, every intermediate proxy has access to all of the information in the packet.  The only way to secure the network from such observers is to minimize the use of proxies.
+
+Where it is still necessary to use intermediate proxies such as with eduroam {{EDUROAM}} and OpenRoaming {{OPENROAMING}}, it is RECOMMENDED to use EAP instead of PAP, CHAP, or MS-CHAP.  If passwords are used, they can be can be protected from being seen by proxies via TLS-based EAP methods such as EAP-TTLS or PEAP.  Passwords can also be omitted entirely from being sent over the network, as with EAP-TLS {{?RFC9190}} or EAP-pwd {{?RFC5931}}.
+
 ## Password Visibility and Storage
 
-Some organizations may desire to increase the security of their network by using alternate authentication methods such as CHAP or MS-CHAP, instead of PAP.  These attempts are largely misguided.  If simple password-based methods must be used, in almost all situations, the security of the network as a whole is increased by using PAP in preference to CHAP or MS-CHAP.  The reason is found through a simple risk analysis, which we explain in more detail below.
+An attacker may choose to ignore the wire protocol entirely, and therefore bypass all of the issues described earlier in this document.  An attacker could instead focus on a database which holds user credentials such as account names and passwords.  At the time of this writing, databases such as {{PWNED}} claim to have records of over twelve billion user accounts which have been compromised.  Such databases are therefore highly sought-after targets.
 
-When PAP is used, any compromise of a system which sees the User-Password will result in that password leaking.  In contrast, when CHAP or MS-CHAP is used, those methods do not share the password, but instead a hashed transformation of it.  That hash output is in theory secure from attackers.  However, the hashes used (MD5 and MD4 respectively) are decades old, have been broken, and are known to be insecure.  Any security analysis which makes the claim that "User-Password insecure because it is protected with MD5" ignores the fact that the CHAP-Password attribute is constructed through substantially similar methods.
+The attack discussed in this section is dependent on vulnerabilities with the credential database, and does not assume an attacker can see or modify RADIUS traffic.  As a result, this attack applies equally well when TTLS, PEAP, or RADIUS/TLS are used.  The success of the attack depends only on how the credentials are stored in the database.  Since the choice of authentication method affects the way credentials are stored in the database, the security of that dependency needs to be discussed and explained.
 
-The difference between the two constructs is that the CHAP-Password depends on the hash of a visible Request Authenticator (or CHAP-Challenge) and the users password, while the obfuscated User-Password depends on the same Request Authenticator, and on the RADIUS shared secret.  For an attacker, the difference between the two calculations is minimal.  They can both be attacked with similar amounts of effort.
+Some organizations may desire to increase the security of their network by avoiding PAP, and using CHAP or MS-CHAP, instead.  These attempts are largely misguided.  If simple password-based methods must be used, in almost all situations, the security of the network as a whole is increased by using PAP in preference to CHAP or MS-CHAP.  The reason is found through a simple risk analysis, which we explain in more detail below.
 
-Further, any security analysis can not stop with the wire protocol.  It must include all related systems which are affected by the choice of authentication methods.  In this case, the most important piece of the system affected by these choices is the database which stores the passwords.
+### PAP Security Analysis
 
-When PAP is used, the information stored in the database can be salted, and/or hashed in a form is commonly referred to as being in "crypt"ed form.  The incoming clear-text password then undergoes the "crypt" transformation, and the two "crypt"ed passwords are compared.  The passwords in the database are stored securely at all times, and any compromise of the database results in the disclosure of minimal information to an attacker.  That is, the attacker cannot easily obtain the clear-text passwords from the database compromise.
+When PAP is used, the RADIUS server obtains a clear-text password from the user, and compares that password to credentials which have been stored in a user database.   The credentials stored in the database can be salted and/or hashed in a form is commonly referred to as being in "crypt"ed form.  The RADIUS server takes the input clear-text password, performs the same "crypt" transformation, and the two "crypt"ed passwords are compared.
 
-The process for CHAP and MS-CHAP is inverted from the process for PAP.  Using similar terminology as above for illustrative purposes, the "crypt"ed passwords are sent to the server.  The server must obtain the clear-text (or NT hashed) password from the database, and then perform the "crypt" operation on the password from the database. The two "crypt"ed passwords are then compared as was done with PAP.  This inverted process has substantial and negative impacts on security.
+Any compromise the RADIUS server will result in that clear-text password leaking.  However, in most cases, the clear-text password is available only in the memory of the RADIUS server application, and only for a short period of time.  An attacker who desires to obtain passwords for all users would have to wait for all users to log in, which can take a substantial amount of time.  During that time, an administrator may discover the breach, and resolve the issue.
 
-When PAP is used, passwords are stored in clear-text only ephemerally in the memory of an application which receives and then verifies the password.  Any compromise of that application results in the exposure of a small number of passwords which are visible at the time of compromise.  If the compromise is undetected for an extended period of time, the number of exposed passwords would of course increase.
+In addition with PAP, the credentials in the database are stored securely at all times (presuming that the administrator only stores "crypt"ed credentials).  Any compromise of the database results in the disclosure of minimal information to an attacker.  That is, the attacker cannot easily obtain the clear-text passwords from compromising the database.
 
-However, when CHAP or MS-CHAP are used, all of passwords are stored in clear-text in the database, all of the time.  The database contents might be encrypted, but the decryption keys are necessarily accessible to the application which reads that database.  Any compromise of the application means that the entire database can be immediately read and exfiltrated as a whole.  The attacker then has complete access to all user identities, and all associated clear-text passwords.
+The result is that the user passwords are visible in clear-text only for a short time, and then only on the RADIUS server.  The security of this system is not as good as seen with EAP-pwd {{?RFC5931}} for example, but it is not terrible.
+
+### CHAP and MS-CHAP Security Analysis
+
+In contrast, when CHAP or MS-CHAP is used, those methods do not expose a clear-text password to the RADIUS server, but instead a hashed transformation of it.  That hash output is in theory secure even if an attacker can observe it.  While CHAP is believed to be secure, MS-CHAP is not, as we will see below in ([](#ms-chap)).  For the purposes of this section, we will focus on the construct of "hashed passwords", and will ignore any attacks specific to MS-CHAP.
+
+The hash transformations for CHAP and MS-CHAP depend on a random challenge.  The intent was to increase security, but their construction makes strong requirements on the form in which user credentials are stored.
+
+The process for performing CHAP and MS-CHAP is inverted from the process for PAP.  Using similar terminology as above for illustrative purposes, the "crypt"ed passwords are sent to the server.  The server must obtain the clear-text (or NT hashed) password from the database, and then perform the "crypt" operation on the password from the database. The two "crypt"ed passwords are then compared as was done with PAP.  This inverted process has substantial and negative impacts on security.
+
+When CHAP or MS-CHAP are used, all of credentials are stored as clear-text passwords (or clear-text equivalent) in the database, all of the time.  The database contents might be encrypted, but the decryption keys are necessarily accessible to the application which reads that database.  Any compromise of the application means that the entire database can be immediately read and exfiltrated as a whole.  The attacker then has complete access to all user identities, and all associated clear-text passwords.
+
+### On-the-wire User-Password versus CHAP-Password
+
+There is one more security myth which should be put to rest about PAP versus CHAP.  There is a common belief that CHAP is more secure, because the User-Password attribute is sent "in the clear" in Access-Request packets.  This belief is false.
+
+The User-Password attribute is obfuscated when it is sent in an Access-Request packet, using keyed MD5 and the shared secret, as defined in {{RFC2865}} Section 5.2.  At the time of this writing, no attack bettwe than brute force has been found which allows an attacker to reverse this obfuscation.
+
+There have been claims that this obfuscation is insecure, and that it is preferable to use CHAP-Password as it does not "send the password in clear-text".  This claim is likewise false.
+
+The CHAP-Password attribute depends on the hash of a visible Request Authenticator (or CHAP-Challenge) and the users password, while the obfuscated User-Password depends on the same Request Authenticator, and on the RADIUS shared secret.  For an attacker, the difference between the two calculations is minimal.  They can both be attacked with similar amounts of effort.   As a result, any security analysis which makes the claim that "User-Password insecure because it is protected with MD5" ignores the fact that the CHAP-Password attribute is constructed through substantially similar methods.
+
+### PAP vs CHAP Conclusions
+
+A careful security analyis shows that for both PAP and CHAP / MS-CHAP, the RADIUS server must have access to the clear-text version of the password.  So there is minimal difference in risk exposure between the different authentication methods if a RADIUS server is compromised.
+
+However, when PAP is used, the user credentials can be stored securely, while such secure storage is impossible with CHAP and MS-CHAP.  There is a substantial difference in risk exposure between the different authentication methods, with PAP offering substantially higher security due to its ability to use "crypt"ed passwords.  In contrast, CHAP is highly insecure, as any database compromise results in the eimmediate exposure of all clear-text user passwords.
 
 The result is that when the system as a whole is taken into account, the risk of password compromise is less with PAP than with CHAP or MS-CHAP.  It is therefore RECOMMENDED that administrators use PAP in preference to CHAP or MS-CHAP.
 
-## MS-CHAP {#ms-chap}
+That being said, other authentication methods such as EAP-TLS {{?RFC9190}} and EAP-pwd {{?RFC5931}} do not expose clear-text passwords to the RADIUS server, and therefore can offer lower risk of password exposure.  It is RECOMMENDED that administrators avoid password-based authentication methods where at all possible.
 
-MS-CHAP (v1 in {{RFC2433}} and v2 in {{RFC2759}}) has major design flaws, and should not be used outside of a secure tunnel.  As MS-CHAPv1 is not normally used, the discussion in this section will focus on MS-CHAPv2.
+## MS-CHAP can be reversed {#ms-chap}
+
+MS-CHAP (v1 in {{RFC2433}} and v2 in {{RFC2759}}) has major design flaws, and should not be used outside of a secure tunnel such as with PEAP or TTLS.  As MS-CHAPv1 is less commonly used, the discussion in this section will focus on MS-CHAPv2.
 
 Recent developments demonstrate just how easy it is to attack MS-CHAPv2 exchanges, and obtain the "NT-hash" version of the password ({{SENSEPOST}}).  The attack relies on a vulnerability in the protocol design in {{RFC2759}} Section 8.4.  In that section, the response to the MS-CHAP challenge is calculated via three DES operations, which are based on the 16-octet NT-Hash form of the password.  However, the DES operation requires 7 octet keys, so the 16-octet NT-Hash cannot be divided evenly into the 21 octets of keys required for the DES operation.
 
@@ -594,8 +654,6 @@ This document therefore mandates that MS-CHAP authentication data carried in RAD
 ## EAP
 
 If more complex authentication methods are needed, there are a number of EAP methods which can be used.  These methods variously allow for the use of certificates (EAP-TLS), or passwords (EAP-TTLS {{?RFC5281}}, PEAP {{I-D.josefsson-pppext-eap-tls-eap}})) and EAP-pwd {{?RFC5931}}.
-
-Where it is necessary to use intermediate proxies such as with eduroam {{EDUROAM}} and OpenRoaming {{OPENROAMING}}, it is RECOMMENDED to use EAP instead of PAP, CHAP, or MS-CHAP.  If passwords are used, they can be can be protected via TLS-based EAP methods such as EAP-TTLS or PEAP.  Passwords can also be omitted entirely from being sent over the network, as with EAP-TLS {{?RFC9190}} or EAP-pwd {{?RFC5931}}.
 
 We also note that the TLS-based EAP methods which transport passwords also hide the passwords from intermediate RADIUS proxies.  However, for the home authentication server, those EAP methods are still subject to the analysis above about PAP versus CHAP, along with the issues of storing passwords in a database.
 
@@ -639,7 +697,7 @@ The primary focus of this document is addressing security and privacy considerat
 
 Deprecating insecure transport for RADIUS, and requiring secure transport means that many historical security issues with the RADIUS protocol no longer apply, or their impact is minimized.
 
-We reiterate the discussion above, that any security analysis must be done on the system as a whole.  It is not enough to put an expensive lock on the front door of a house while leaving the window next to it open, and then declare the house to be "secure". Any approach to security based on a simple checklist is at best naive, more truthfully is deeply misleading, and at worst such practices will serve to decrease security.
+We reiterate the discussion above, that any security analysis must be done on the system as a whole.  It is not reaonable to put an expensive lock on the front door of a house while leaving the window next to it open, and then declare the house to be "secure". Any approach to security based on a simple checklist is at best naive, more truthfully is deeply misleading, and at worst such practices will decrease security.
 
 Implementers and administrators need to be aware of the issues raised in this document.  They can then make the best choice for their local network which balances their requirements on privacy, security, and cost.
 
