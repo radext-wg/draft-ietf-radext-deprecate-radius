@@ -683,6 +683,64 @@ The data presented indicated that the WBA saw just about every possible counter 
 
 It should go without saying that accounting systems need to produce correct data.  However, {{RFC2865}} makes no requirement that the accounting data transported in RADIUS is correct, or is even vaguely realistic.  We therefore say that systems which produce accounting data MUST generate correct, accurate, and reasonably precise data.  Vendors of networking equipment SHOULD test their systems to verify that the data they produce is accurate.
 
+# Practical Suggestions
+
+In the interest of simplifying the above explanations, this section provides a short-form checklist of recommendations.  Following this checklist does not guarantee that RADIUS systems are secure from all possible attacks.  However, systems which do not follow this checklist are likely to be vulnerable to known attacks, and are therefore less secure than they could be.
+
+> [ ] Do not use RADIUS/UDP or RADIUS/TCP across the wider Internet
+>>
+>> Exposing user identifiers, device identifiers, and locations is a privacy and security issue.
+
+> [ ] Avoid RADIUS/UDP or RADIUS/TCP in other networks, too.
+>>
+>> It can take time to upgrade equipment, but the long-term goal is to entirely deprecate RADIUS/UDP.
+
+> [ ] Use strong shared secrets
+>>
+>> Shared secrets should be generated from a cryptographically strong pseudo-random number generator.  They should contain at least 128 bits of entropy.  Each RADIUS client should have a unique shared secret.
+
+> [ ] Minimize the use of RADIUS proxies.
+>>
+>> More proxies means more systems which could be compromised, and more systems which can see private or secret data.
+
+> [ ] Do not proxy from secure to insecure transports
+>>
+>> If user information (credentials or identities) is received over a secure transport (IPSec, RADIUS/TLS, TLS-based EAP method), then proxying the protected data over RADIUS/UDP or RADIUS/TCP degrades security and privacy.
+
+> [ ] Prefer EAP authentication methods to non-EAP methods.
+>>
+>> EAP authentication methods are better at hiding user credentials from observers.
+
+> [ ] For EAP, use anonymous outer identifiers
+>>
+>>  There are few reasons to use individual identies for EAP.  Identifying the realm is usually enough.
+>>
+>> {{RFC7542}} Section 2.4 recommends that "@realm" is preferable to "anonymous@realm", which is in turn preferable to "user@realm".
+
+> [ ] Do not use MS-CHAP outside of TLS-based EAP methods.
+>>
+>> MS-CHAP can be cracked with minimal effort.
+
+> [ ] Prefer using PAP to CHAP or MS-CHAP.
+>>
+>> PAP allows for credentials to be stored securely "at rest" in a user database.  CHAP and MS-CHAP do not.
+
+> [ ] Store passwords in "crypt"ed form
+>>
+>> Where is is necessary to store passwords, use systems such as PBKDF2 ({{?RFC8018}}.
+
+> [ ] Regularly update to the latest cryptographic methods.
+>>
+>> TLS 1.0 with RC4 was acceptable at one point in time.  It is no longer acceptable.  Similarly, the current cryptographic methods will at some point will be deprecated, and replaced by updated methods.  Upgrading to recent cryptographic methods should be a normal part of operating a RADIUS server.
+
+> [ ] Regularly deprecate older cryptographic methods.
+>>
+>> Administrators should actively deprecate the use of older cryptographic methods.  If no system is using older methods, then those methods should be disabled or removed entirely.  Leaving old methods enabled makes the server more vulnerable to attacks.
+
+> [ ] Send the minimim amount of information which is needed,.
+>>
+>> Where proxying is used, it is a common practice is to simply forward all of the information from a NAS to other RADIUS servers.  Instead, the proxy closest to the NAS should filter out any attributes or data which are not needed by the "next hop" proxies, or by the home server.
+
 # Privacy Considerations
 
 The primary focus of this document is addressing privacy and security considerations for RADIUS.
