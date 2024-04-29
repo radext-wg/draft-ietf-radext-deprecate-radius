@@ -140,7 +140,7 @@ As of the writing of this specification, RADIUS/UDP is still widely used, even t
 
 However, the problems with MD5 means that if a someone can view RADIUS/UDP traffic, a hobbyist attacker can crack all possible RADIUS shared secrets of eight characters in not much more than an hour.  An more resourceful attacker (e.g. a nation-state) can crack much longer shared secrets with only modest expenditures.  See [](#cracking) below for a longer discussion of this topic.
 
-Cracking the shared secret will also result in compromise of all passwords carried in the User-Password attribute.  Even using CHAP-Password offers minimal protection, as the cost of cracking the underlying password is similar to the cost of cracking the shared secret.  MS-CHAP ({{RFC2433}} and {{RFC2759}}) is significantly worse for security, as it can be trivially cracked with minimal resources even if the shared secret is not known ([](#ms-chap)).
+Cracking the shared secret will also result in compromise of all passwords carried in the User-Password attribute.  Even using CHAP-Password offers minimal protection, as the cost of cracking the underlying password is similar to the cost of cracking the shared secret.  MS-CHAP ({{RFC2433}} and MS-CHAPv2 {{RFC2759}}) are significantly worse in security than PAP, as they can be trivially cracked with minimal resources, ([](#ms-chap)).
 
 The use of Message-Authenticator does not help.  The Message-Authenticator attribute is a later addition to RADIUS, and does does not replace the original MD5-based packet signatures.  While it therefore offers a stronger protection, it does not change the cost of attacking the shared secret.  Moving to a stronger packet signatures (e.g. {{RFC6218}}) would still not fully address the issues with RADIUS, as the protocol still has privacy issues unrelated to the the security of packet signatures.
 
@@ -445,6 +445,16 @@ This document therefore requires that RADIUS clients MUST include the Message-Au
 
 In contrast, when TLS-based transports are used, the Message-Authenticator attribute serves no purpose, and can be omitted, even when the Access-Request packet contains an EAP-Message attribute.  Servers receiving Access-Request packets over TLS-based transports SHOULD NOT silently discard a packet if it is missing a Message-Authenticator attribute.  However, if the Message-Authenticator attribute is present, it still MUST be validated as discussed in {{RFC7360}} and {{RFC3579}}.
 
+### Server Behavior
+
+In order to allow for migration from historic client behavior, servers SHOULD include a configuration flag which controls the above behavior.  The flag could be called "require Message-Authenticator", though other names are possible.
+
+If the flag is set to "false", then the server behavior is unchanged from previous specifications.  If the flag is set to "true", then Access-Request packets which are missing the Message-Authenticator attribute MUST NOT be accepted by the server.  Instead, the server MUST reply immediately with an Access-Reject which contains an Error-Cause attribute with value 510 (Missing Message-Authenticator).
+
+The purpose of this reply is two-fold.  First, the reply is a signal the client that the server is still alive.  If the packet was silently discarded, the client would have no idea why the server failed to respond.  The client could erroneously conclude that the server was down, and initiate fail-over procedures.  Such behavior leads to network instability, and should be avoided.
+
+The second purpose of the reply is to inform the administrator of the client system as to why the Access-Request was not accepted.  The Error-Cause attribute signals the administrator as to the reason for the rejection, and indicates the corrective course of action which needs to be taken.
+
 ## Recommending TLS-PSK
 
 Given the insecurity of RADIUS/UDP, the absolute minimum acceptable security is to use strong shared secrets.  However, administrator overhead for TLS-PSK is not substantially higher than for shared secrets, and TLS-PSK offers significantly increased security and privacy.
@@ -601,6 +611,12 @@ In addition with PAP, the credentials in the database are stored securely at all
 
 The result is that the user passwords are visible in clear-text only for a short time, and then only on the RADIUS server.  The security of this system is not as good as seen with EAP-pwd {{?RFC5931}} for example, but it is not terrible.
 
+While the obfuscation method used for the User-Password attribute has not been shown to be insecure, it is not known to be secure.  The obfuscation method depends on calculating MD5(secret + Request Authenticator), which has a few helpful properties for an attacker.  The cost of brute-forcing short secrets is not large, [](#cracking) discusses that cost in detail.  Even for longer secrets which are humanly generated, the MD5 state for hashing the secret can be pre-calculated and stored on disk.  This process is relatively inexpensive, even for billions of possible shared secrets.  The Request Authenticator can then be added to each pre-calculated state via brute-force, and compared to the obfuscated User-Password data.
+
+The MD5 digest is 16 octets long, and many passwords are shorter than that.  This difference means that the final octets of the digest are placed into the User-Password attribute without modificaiton.  The result is that a brute-force attack does not need to decode the User-Password and see if the decoded password "looks reasonable".  Instead, the attacker simply needs to compare the final octets of the calculated digest with the final octets of the User-Password attribute.  The result is an extremely high probability signal that the guessed secret is correct.
+
+The only protection from this attack is to ensure that the secret is long, and derived from a cryptographically strong pseudo-random number generator.  {#shared-secrets} discusses these issues in more detail.
+
 ### CHAP and MS-CHAP Security Analysis
 
 In contrast, when CHAP or MS-CHAP is used, those methods do not expose a clear-text password to the RADIUS server, but instead a hashed transformation of it.  That hash output is in theory secure even if an attacker can observe it.  While CHAP is believed to be secure, MS-CHAP is not, as we will see below in ([](#ms-chap)).  For the purposes of this section, we will focus on the construct of "hashed passwords", and will ignore any attacks specific to MS-CHAP.
@@ -641,15 +657,15 @@ The solution in {{RFC2759}} Section 8.4 is to use the first 7 octets of the NT-H
 
 If the attacker has a database which correlates known passwords to NT-Hashes, then those two octets can be used as an index into that database, which returns a subset of candidate hashes.  Those hashes are then checked via brute-force operations to see if they match the original MS-CHAPv2 data.
 
-This process lowers the complexity of cracking MS-CHAP by nearly five orders of magnitude as compared to a brute-force attack.  The attack has been demonstrated against databases containing tens to hundreds of millions of passwords.  On a consumer-grade machine, the time required for such an attack to succeed is on the order of tens of milliseconds.
+This process lowers the complexity of cracking MS-CHAP by nearly five orders of magnitude as compared to a brute-force attack.  The attack has been demonstrated using databases which contain tens to hundreds of millions of passwords.  On a consumer-grade machine, the time required for such an attack to succeed is on the order of tens of milliseconds.
 
 While this attack does require a database of known passwords, such databases are easy to find online, or to create locally from generator functions.  Passwords created manually by people are notoriously predictable, and are highly likely to be found in a database of known passwords.  In the extreme case of strong passwords, they will not be found in the database, and the attacker is still required to perform a brute-force dictionary search.
 
-The result is that MS-CHAPv2 SHOULD be considered in most situations as being equivalent in security and privacy to PAP.  It offers little benefit over PAP, and has many drawbacks as discussed here, and in the previous section.
+In fact, MS-CHAP has significantly poorer security than PAP when the MS-CHAP data is sent over the network in the clear.  When the MS-CHAP data is not protected by TLS, it is visible to everyone who can observe the RADIUS traffic.  Attackers who can see the MS-CHAP traffic can therefore obtain the underlying NT-Hash with essentially zero effort, as compared to cracking the RADIUS shared secret.  In contrast, the User-Password attribute is obfuscated with data derived from the Request Authenticator and the shared secret, and that method has not been successfully attacked.
 
-There is one situation where MS-CHAP is significantly worse than PAP; where the MS-CHAP data is sent over the network in the clear.  When the MS-CHAP data is not protected by TLS, it is visible to everyone who can observe the RADIUS traffic.  Attackers who can see the MS-CHAP traffic can therefore obtain the underlying NT-Hash with essentially zero effort, as compared to cracking the RADIUS shared secret.
+Implementors and administrators SHOULD therefore consider MS-CHAP and MS-CHAPv2 to be equivalent in security to sending passwords in the clear, without any encryption or obfuscation.  That is, the User-Password attribute with obfuscation is substantially more secure than MS-CHAP.  MS-CHAP offers little benefit over PAP, and has many drawbacks as discussed here, and in the previous section.
 
-This document therefore mandates that MS-CHAP authentication data carried in RADIUS MUST NOT be sent in situations where the MS-CHAP data is visible to an observer.  That is, MS-CHAP authentication MUST NOT be sent over RADIUS/UDP or RADIUS/TCP
+This document therefore mandates that MS-CHAP or MS-CHAPv2 authentication data carried in RADIUS MUST NOT be sent in situations where the that data is visible to an observer.  MS-CHAP or MS-CHAPv2 authentication data MUST NOT be sent over RADIUS/UDP or RADIUS/TCP.  RADIUS client implementations SHOULD remove the option to use MS-CHAP from all configuration interfaces.
 
 ## EAP
 
@@ -759,11 +775,18 @@ We reiterate the discussion above, that any security analysis must be done on th
 
 Implementers and administrators need to be aware of the issues raised in this document.  They can then make the best choice for their local network which balances their requirements on privacy, security, and cost.
 
+## Practical Implications
+
+This document either deprecates or forbids methods and behaviors which have been common practice for decades.  While insecure practices have been viewed as tolerable, they are no longer acceptable.
+
 # IANA Considerations
 
-There are no IANA considerations in this document.
+IANA is instructed to update the RADIUS Types registry, and the "Values for RADIUS Attribute 101, Error-Cause Attribute" sub-registry with the following addition:
 
-RFC Editor: This section may be removed before final publication.
+~~~
+Value,Description,Reference
+502,Missing Message-Authenticator,[THIS-DOCUMENT]
+~~~~
 
 # Acknowledgements
 
@@ -783,6 +806,6 @@ Thanks to the many reviewers and commenters for raising topics to discuss, and f
 
 * 00 - adoption by WG.
 
-* 01 - review from Bernard Aboba.  Added discussion on accounting, clarified and re-arranged text.
+* 01 - review from Bernard Aboba.  Added discussion on accounting, clarified and re-arranged text.  Added discussion of server behavior for missing Message-Authenticator
 
 --- back
