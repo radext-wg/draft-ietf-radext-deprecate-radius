@@ -1,7 +1,7 @@
 ---
 title: Deprecating Insecure Practices in RADIUS
 abbrev: Deprecating RADIUS
-docname: draft-ietf-radext-deprecating-radius-03
+docname: draft-ietf-radext-deprecating-radius-04
 updates: 2865, 2866, 5176, 7585
 
 stand_alone: true
@@ -197,17 +197,17 @@ The packet forgery issue was further discussed in 2004 in {{RFC3579, Section 4}}
 > attribute in Access-Request packets.  Requests not containing a
 > Message-Authenticator attribute MAY then be silently discarded.
 
-To our knowledge, only one RADIUS server implemented even this limited suggestion.  At the time of publication of {{?RFC5080}}, there was no consensus to require the use of Message-Authenticator in all Access-Request packets.  If this recommendation had instead been made mandatory, then the recent BlastRADIUS vulnerability would largely have been prevented.
+To our knowledge, only one RADIUS server implemented even this limited suggestion.  At the time of publication of {{?RFC5080}}, there was no consensus to require the use of Message-Authenticator in all Access-Request packets.  If this recommendation had instead been made mandatory, then the recent BlastRADIUS attack {{BLAST}} would largely have been prevented.
 
 The state of MD5 security was again discussed in {{RFC6151}}, which states in Section 2:
 
 > MD5 is no longer acceptable where collision resistance is required such as digital signatures.
 
-That statement led to RADIUS security being reviewed in {{RFC6421, Section 3}}.  The outcome of that review was the text in the remainder of {{RFC6421}}, which created crypto-agility requirements for RADIUS.  The main outcome of those requirements was not any change to RADIUS, but instead the definition of RADIUS/TLS in {{RFC6614}}, and RADIUS over DTLS in {{RFC7360}}.  The other outcome was a consensus that adding crypto-agility to RADIUS was likely not a good idea, and that standardizing RADIUS over TLS instead was a significantly better path forward.
+That statement led to RADIUS security being reviewed in {{RFC6421, Section 3}}.  The outcome of that review was the text in the remainder of {{RFC6421}}, which created crypto-agility requirements for RADIUS.  The main outcome of those requirements was not any change to RADIUS, but instead the definition of RADIUS/TLS in {{RFC6614}}, and RADIUS/DTLS in {{RFC7360}}.  The other outcome was a consensus that adding crypto-agility to RADIUS was likely not a good idea, and that standardizing RADIUS over TLS instead was a significantly better path forward.
 
 While the RADIUS/TLS work is ongoing at the time of this writing, there are still a large number of sites using RADIUS/UDP.  Those sites need to be supported and secured until they can migrate to TLS, while at the same time maintaining backwards compatibility.
 
-To summarize, {{RFC6151}} is over a decade old as of the time of this writing.  {{?RFC5080}} is almost two decades old.  The knowledge that Access-Request packets lack integrity checks is almost three decades old.  Over that entire span of time, there has been no mandate to remove the use of MD5 in the RADIUS protocol.  This document specifies that mandate.
+To summarize, {{RFC6151}} is over a decade old as of the time of this writing.  {{?RFC5080}} is almost two decades old.  The knowledge that Access-Request packets lack integrity checks is almost three decades old.  Over that entire span of time, there has been no mandate to increase the security of Access-Request packets. This document provides that mandate.
 
 It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates all insecure uses of RADIUS, and mandates the use of secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give many recommendations for practices which increase security and privacy.
 
@@ -228,7 +228,7 @@ The use of IPSec allowed RADIUS to be sent privately, and securely, across the I
 
 RADIUS/TLS {{RFC6614}} and RADIUS/DTLS {{RFC7360}} were then defined in order to meet the crypto-agility requirements of {{RFC6421}}.  RADIUS/TLS has been in wide-spread use for about a decade, including eduroam {{EDUROAM}} {{?RFC7593}}, and more recently OpenRoaming {{OPENROAMING}} and {{I-D.tomas-openroaming}}.  RADIUS/DTLS has seen less use across the public Internet, but it still has multiple implementations.
 
-However, RADIUS/UDP is still widely used, even though it depends on MD5 and "ad hoc" constructions for security.  The recent "BlastRADIUS" attack {{BLAST}} shows just how inadequate this dependency is.  The BlastRADIUS attack is discussed in more detail below, in [](#blastradius).
+However, RADIUS/UDP is still widely used, even though it depends on MD5 and "ad hoc" constructions for security.  The recent "BlastRADIUS" attack shows just how inadequate this dependency is.  The BlastRADIUS attack is discussed in more detail below, in [](#blastradius).
 
 Even if we ignore the BlastRADIUS attack, problems with MD5 mean that a hobbyist attacker who can view RADIUS/UDP traffic can brute-force test all possible RADIUS shared secrets of eight characters in not much more than an hour.  An more resourceful attacker (e.g. a nation-state) can check all much longer shared secrets with only modest expenditures.  See [](#cracking) below for a longer discussion of this topic.
 
@@ -250,7 +250,7 @@ The use of a secure transport such as IPSec or TLS ensures complete privacy and 
 
 For example, it is possible for an attacker to record the session traffic, and later crack the TLS session key or IPSec parameters.  This attack could comprise all traffic sent over that connection, including EAP session keys.  If the cryptographic methods provide forward secrecy ({{?RFC7525, Section 6.3}}), then breaking one session provides no information about other sessions.  As such, it is RECOMMENDED that all cryptographic methods used to secure RADIUS conversations provide forward secrecy.  While forward secrecy will not protect individual sessions from attack, it will prevent attack on one session from being leveraged to attack other, unrelated, sessions.
 
-AAA servers should minimize the impact of such attacks by using a total throughput or time based limit before replacing the session keys.  The session keys can be replaced though a process of either re-keying the existing connection, or by opening a new connection and deprecating the use of the original connection.  Note that if the original connection if closed before a new connection is open, it can cause spurious errors in a proxy environment.
+AAA servers SHOULD minimize the impact of such attacks by using a total throughput or time based limit before replacing the session keys.  The session keys can be replaced though a process of either re-keying the existing connection, or by opening a new connection and deprecating the use of the original connection.  Note that if the original connection if closed before a new connection is open, it can cause spurious errors in a proxy environment.
 
 The final attack possible in a AAA system is where one party in a AAA conversation is compromised or run by a malicious party.  This attack is made more likely by the extensive use of RADIUS proxy forwarding chains.  In that situation, every RADIUS proxy has full visibility into, and control over, the traffic it transports.  The solution here is to minimize the number of proxies involved, such as by using Dynamic Peer Discovery, as defined in {{?RFC7585}}.
 
@@ -320,7 +320,7 @@ There is no way to fix the RADIUS protocol to address all of these issues.  The 
 
 We address each of these issues in detail below.
 
-## The BlastRADIUS Vulnerability {#blastradius}
+## The BlastRADIUS Vulnerability
 
 The BlastRADIUS vulnerability is discussed in detail in {{BLAST}}, and we only give a short summary here.  We refer the reader to the original paper for a more complete description of the issue.
 
@@ -386,7 +386,7 @@ This brute-force attack is also trivially parallelizable.  Nation-states have su
 
 Whether the above numbers are precise or only approximate is immaterial.  These attacks will only get better over time.  The cost to crack shared secrets will only go down over time.
 
-If the shared secret is long, it is cheaper to perform the BlastRADIUS attack at a cost of approximately 2^53 per packet, and less than $100 in purchased CPU time.  While cracking the shared secret would break all RADIUS packets using that secret, forging one packet is often enough to give the attacker administrator access to a NAS, where the shared secret is visible in the administration interface.  The conclusion, then, is that increasing the security of the shared secret offers minimal protection when the Access-Request packets are unsigned.
+If the shared secret is long, then "cracking" the secret is expensive.  It is cheaper to perform the BlastRADIUS attack at a cost of approximately 2^53 per packet, and less than $100 in purchased CPU time.  While cracking the shared secret would break all RADIUS packets using that secret, forging one packet is often enough to give the attacker administrator access to a NAS, where the shared secret is visible in the administration interface.  The conclusion, then, is that increasing the security of the shared secret offers minimal protection when the Access-Request packets are unsigned.
 
 Even if the shared secrets were enough to secure all RADIUS packets, administrators do not always derive shared secrets from secure sources of random numbers.  The "time to crack" numbers given above are the absolute best case, assuming administrators follow best practices for creating secure shared secrets.  For shared secrets created manually by a person, the search space is orders of magnitude smaller than the best case outlined above.  Rather than brute-forcing all possible shared secrets, an attacker can create a local dictionary which contains common or expected values for the shared secret.  Where the shared secret used by an administrator is in the dictionary, the cost of the attack can drop by multiple orders of magnitude.
 
@@ -472,7 +472,7 @@ The above analysis as to security and privacy issues focuses on RADIUS/UDP and R
 
 When TLS-based EAP methods such as TTLS or PEAP are used, they still transport passwords inside of the TLS tunnel.  It is possible for an authentication server to terminate the TLS tunnel, and then proxy the inner data over RADIUS/UDP.  The design of both TTLS and PEAP make this process fairly trivial.  The inner data for TTLS is in Diameter AVP format, which can be trivially transformed to RADIUS attributes.  The inner data for PEAP is commonly EAP-MSCHAPv2, which can also be trivially transformed to bare EAP, or to MS-CHAPv2.
 
-Similar issues apply to RADIUS/TLS and IPSec.  A proxy receiving packets over IPSec could terminate the secure tunnel, and then forward the RADIUS packets over an insecure transport protocol.  While this process could arguably be seen as a misconfiguration issue, it is never the less possible due to the design of the RADIUS protocol.  The design of RADIUS security is that it is "hop by hop", and there is no way for one "hop" to know anything about, or to control, the security of another "hop".
+Similar issues apply to RADIUS/TLS and IPSec.  A proxy receiving packets over IPSec terminates the secure tunnel, but then might forward the packets over an insecure transport protocol.  While this process could arguably be seen as a misconfiguration issue, it is never the less possible due to the design of the RADIUS protocol.  The design of RADIUS security is that it is "hop by hop", and there is no way for one "hop" to know anything about, or to control, the security of another "hop".
 
 The only solution to either issue would be to create a new protocol which is secure by design.  Unfortunately that path is not possible, and we are left with the recommendations contained in this document.
 
@@ -492,7 +492,7 @@ Unless RADIUS packets are sent over a secure network (IPsec, TLS, etc.), adminis
 
 To be perfectly clear: if a User-Password, or CHAP-Password, or MS-CHAP password has been sent over the Internet via RADIUS/UDP or RADIUS/TCP in the last decade, you should assume that the underlying password has been compromised.
 
-# The BlastRADIUS Attack
+# The BlastRADIUS Attack {#blastradius}
 
 This section gives some more detail on the attack, so that the reader can be informed as to why this document makes particular recommendations.
 
@@ -526,7 +526,7 @@ The attack is implemented via the following steps, which are numbered the same a
 
 The result of this attack is a near-complete compromise of the RADIUS protocol.  The attacker can cause any user to be authenticated.  The attacker can give almost any authorization to any user. 
 
-While the above description uses Access-Reject responses, we reiterate that the root cause of the vulnerability is in the Access-Request packets.  The attack will therefore succeed even if the server responds with Access-Accept, Access-Challenge, or Protocol-Error.  The vulnerability in Access-Challenge allows MFA to be bypassed, as the attacker simply replaces the Access-Challenge with an Access-Accept.
+While the above description uses Access-Reject responses, we reiterate that the root cause of the vulnerability is in the Access-Request packets.  The attack will therefore succeed even if the server responds with Access-Accept, Access-Challenge, or Protocol-Error {{?RFC7930}}.  The vulnerability in Access-Challenge allows MFA to be bypassed, as the attacker simply replaces the Access-Challenge with an Access-Accept.
 
 In addition to forging an Access-Accept for a user who has no credentials, the attacker can control the traffic of known and authenticated users.  Many modern Broadband Network Gateways (BNG)s, Wireless Lan Controllers (WLCs), and Broadband Remote Access Servers (BRAS) support configuring a dynamic HTTP redirect using Vendor Specific Attributes (VSA)s.  These VSAs are not protected by the shared secret, and could be injected into an Access-Accept in order to redirect a users traffic.  The attacker could then set up a malicious website to launch Zero-Day/Zero-Click attacks, driving subscribers to the website using an HTTP redirect.  This issue is compounded by the fact that many devices perform automatic HotSpot 1.0 style walled garden discovery.  The act of simply connecting to their home WiFi connect could be enough to compromise a subscriber's equipment.
 
@@ -554,7 +554,9 @@ This section outlines the mitigation methods which protect systems from this att
 
 We note that unless otherwise noted, the discussion here applies only to Access-Request packets, and to responses to Access-Request (i.e. Access-Accept, Access-Reject, Access-Challenge, and Protocol-Error packets).  All behavior involving other types of request and response packets remains unchanged.
 
-Similarly, the recommendations in this section only apply to UDP and TCP transport.   They do not apply to TLS transport, and no changes to TLS transport are needed to protect from this attack.  Clients and servers MUST NOT apply any of the new configuration flags to packets sent over TLS or DTLS transport.  Clients and servers MAY include Message-Authenticator in request and responses packets which are sent over TLS or DTLS transports, but the attribute serves no security purpose.
+Similarly, the recommendations in this section only apply to UDP and TCP transport.   They do not apply to TLS transport, and no changes to TLS transport are needed to protect from this attack.  Clients and servers MUST NOT apply any of the new configuration flags to packets sent over TLS or DTLS transport.  Those configuration flags are designed to protect RADIUS/UDP and RADIUS/TCP, and they serve no purpose when TLS transport is used.
+
+However, Clients and servers SHOULD include Message-Authenticator in request and responses packets which are sent over TLS or DTLS transports.  While the attribute serves no security purpose, we recommend including Message-Authenticator because of the behavior of some implementations.  Some RADIUS proxies are known to include Message-Authenticator in forwarded packets only when the attribute exists in the packet received from the client.  It is therefore useful for systems to always include Message-Authenticator in Access-Request packets, even when TLS is used.  This behavior will only marginally increase the cost of RADIUS/TLS, and will increase the security of proxy implementations which might not implement the BlastRADIUS mitigations.
 
 We recognize that switching to TLS transport may require a significant amount of effort.  There is a substantial amount of work to perform in updating implementations, performing interoperability tests, changing APIs, changing user interfaces, and updating documentation.  This effort cannot realistically be done in a short time frame.
 
@@ -582,7 +584,7 @@ However, many existing RADIUS clients do not send Message-Authenticator.  It als
 
 ### Servers and Access-Request
 
-Servers MUST have a per-client boolean configuration flag, which we call “require Message-Authenticator”.  The default value for this flag must be “false” in order to maintain compatibility with legacy clients.
+Servers MUST have a per-client boolean configuration flag, which we call “require Message-Authenticator”.  The default value for this flag MUST be “false” in order to maintain compatibility with legacy clients.
 
 For simplicity of configuration, servers SHOULD have a similar global flag, which is over-ridden by the more specific per-client flag.
 
@@ -630,7 +632,7 @@ When the flag is set to "true", RADIUS servers MUST require that all Access-Requ
 
 For simplicity of configuration, servers SHOULD have a similar global flag, which is over-ridden by the more specific per-client flag.
 
-As RADIUS proxies are now mandated to add Proxy-State to all proxied packets, this flag should be set only when the client is a NAS which cannot be upgraded, and MUST NOT be set in other situations.  Specifically, the flag MUST NOT be set when the client is a proxy,  the “require Message-Authenticator” flag MUST be used instead.
+As RADIUS proxies are now mandated to add Messge-Authenticator to all proxied packets, this flag should be set only when the client is a NAS which cannot be upgraded, and MUST NOT be set in other situations.  Specifically, the flag MUST NOT be set when the client is a proxy,  the “require Message-Authenticator” flag MUST be used instead.
 
 The recommended behavior for this flag is to not just drop packets which contain Proxy-State, but instead to drop them only if they contain Proxy-State, and also do not contain Message-Authenticator.  The additional checks allow the server to be more flexible in what packets it accepts, without compromising on security.
 
@@ -955,7 +957,9 @@ While the text in [](#blastradius) goes into detail about the mitigations, we su
 
 RADIUS clients MUST include the Message-Authenticator in all Access-Request packets when UDP or TCP transport is used.  RADIUS servers MUST also include the Message-Authenticator as the first attribute in responses to Access-Accept.  Both clients and servers MUST have a boolean flag which we call "require Message-Authenticator".  When set to "true", implementations MUST silently discard packets which do not contain Message-Authenticator.  Servers MUST have a boolean flag which we call "limit Proxy-State".  This flag is only examined when the "require Message-Authenticator" flag is set to "false".  When the "limit Proxy-State" is set to "true", servers MUST discard packets which contain Proxy-State but do not also contain Message-Authenticator.
 
-In contrast, when TLS-based transports are used, the Message-Authenticator attribute serves no purpose, and can be omitted, even when the Access-Request packet contains an EAP-Message attribute.  Servers receiving Access-Request packets over TLS-based transports SHOULD NOT silently discard a packet if it is missing a Message-Authenticator attribute.  However, if the Message-Authenticator attribute is present, it still MUST be validated as discussed in {{RFC7360}}.
+In contrast, when TLS-based transports are used, the Message-Authenticator attribute serves no purpose, and could be omitted, even when the Access-Request packet contains an EAP-Message attribute.  However, implementations SHOULD include it, even if it servers no immediate purpose.  As noted earlier, including Message-Authenticator can increase the security of legacy proxies which do not implement the BlastRADIUS mitigations.
+
+Servers receiving Access-Request packets over TLS-based transports SHOULD NOT silently discard a packet if it is missing a Message-Authenticator attribute.  However, if the Message-Authenticator attribute is present, it still MUST be validated as discussed in {{RFC7360}}.
 
 ## Recommending TLS-PSK
 
@@ -1141,13 +1145,16 @@ A client which supports dynamic discovery of home servers still has to perform f
 
 Organizations relying on dynamic discovery SHOULD have some way of automatically sharing which realms are valid, and which are not.  There are a number of possibilities here, and choosing the best one is up to each individual organization.
 
-Clients supporting dynamic discovery SHOULD require that servers use certificates from a private Certification Authority (CA).  Clients MUST NOT accept server certificates rooted from public CAs (e.g. as is done for web servers).  Similarly, servers SHOULD require that clients use certificates from a private Certification Authority (CA).  Servers MUST NOT accept client certificates rooted from a public CA.
+Clients supporting dynamic discovery SHOULD require that servers use certificates from a private Certification Authority (CA).  Clients MUST NOT automatically accept server certificates rooted from public CAs (e.g. as is done for web servers).  Instead, clients MUST be configurable to use only a limited set of CAs.  The default list of accepted CAs SHOULD be empty.
+
+
+  Similarly, servers SHOULD require that clients use certificates from a private Certification Authority (CA).  Servers MUST NOT accept client certificates rooted from a public CA.
 
 Servers which accept connections from dynamic discover are necessarily open to the Internet.  Administrators SHOULD limit the source IP of allowed connections.  Server SHOULD filter received packets by NAI, and close connections when the NAIs in incoming packets do not match the NAI(s) that the server expects.  This mismatch indicates either a misconfigured or malicious client.
 
 Both clients and servers can send any data inside of a TLS tunnel.  Implementations SHOULD take care to treat the data inside of a TLS tunnel as a potential source of attacks.
 
-Implementations may not need one connection per realm, even if multiple realms use the same destination IP or host name.  Clients SHOULD use SNI to indicate which realm they are connecting to.  Servers SHOULD present a certificate for the requested realm, instead of using a shared or "hosting" certificate which is owned by the hosting provider, and is used by multiple realms.  Such certificate sharing decreases security, and increases operational costs.
+Where multiple realms resolve to the same destination IP address, implementations MAY send packets for multiple realms across a connection to that IP address.  Clients SHOULD use SNI to indicate which realm they are connecting to.  Servers SHOULD present a certificate for the requested realm, instead of using a shared or "hosting" certificate which is owned by the hosting provider, and is used by multiple realms.  Such certificate sharing decreases security, and increases operational costs.
 
 Where systems do not have a pre-defined list of allowed realms, implementations MUST support negative caching.  That is, if the lookup for a particular realm fails, or a connection to that realm fails, then the implementation needs to cache that negative result for a period of time.  This cache needs to be examined prior to any new lookup or connection being made.  If there is an entry in the negative cache, then the server MUST skip the lookup or connection attempt, and instead return an immediate error.  This negative cache time SHOULD be configurable.
 
@@ -1318,7 +1325,7 @@ And also for Service-Type in {{RFC2865, Section 5.6}}:
 
 A client is not required to implement all possible authorizations which can be sent in an Access-Accept.   We therefore extend the above scenarios to packets which contain unknown Types.  A client SHOULD treat Access-Accepts with no known or supported authorizations as though an Access-Reject had been received instead.
 
-This requirement for unknown Types is already met by most, if not all, RADIUS implementations.  That is, experience has shown that discarding packets for arbitrary reasons causes problems.  Existing implementations have largely chosen to follow reasonable practices, and the recommendation here simply documents that wide-spread practice.
+This requirement for unknown Types is already met by most, if not all, RADIUS implementations.  That is, experience has shown that discarding packets for x3arbitrary reasons causes problems.  Existing implementations have largely chosen to follow reasonable practices, and the recommendation here simply documents that wide-spread practice.
 
 # Practical Suggestions
 
@@ -1444,5 +1451,7 @@ Many thanks to Nadia Heninger and the rest of the BlastRADIUS team, along with H
 * 02 - BlastRADIUS updates.
 
 * 03 - add delay Access-Reject, constant-time comparison, no routing protocol.  Updated the text significantly and made it more consistent with the BlastRADIUS recommendations.  Add "updates" other RFCs.
+
+* 04 - updates with review from Fabian Mauchle
 
 --- back
