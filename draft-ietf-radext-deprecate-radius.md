@@ -1325,7 +1325,7 @@ And also for Service-Type in {{RFC2865, Section 5.6}}:
 
 A client is not required to implement all possible authorizations which can be sent in an Access-Accept.   We therefore extend the above scenarios to packets which contain unknown Types.  A client SHOULD treat Access-Accepts with no known or supported authorizations as though an Access-Reject had been received instead.
 
-This requirement for unknown Types is already met by most, if not all, RADIUS implementations.  That is, experience has shown that discarding packets for x3arbitrary reasons causes problems.  Existing implementations have largely chosen to follow reasonable practices, and the recommendation here simply documents that wide-spread practice.
+This requirement for unknown Types is already met by most, if not all, RADIUS implementations.  That is, experience has shown that discarding packets for arbitrary reasons causes problems.  Existing implementations have largely chosen to follow reasonable practices, and the recommendation here simply documents that wide-spread practice.
 
 # Practical Suggestions
 
