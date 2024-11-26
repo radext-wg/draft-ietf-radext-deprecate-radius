@@ -390,7 +390,7 @@ If the shared secret is long, then "cracking" the secret is expensive.  It is ch
 
 Even if the shared secrets were enough to secure all RADIUS packets, administrators do not always derive shared secrets from secure sources of random numbers.  The "time to crack" numbers given above are the absolute best case, assuming administrators follow best practices for creating secure shared secrets.  For shared secrets created manually by a person, the search space is orders of magnitude smaller than the best case outlined above.  Rather than brute-forcing all possible shared secrets, an attacker can create a local dictionary which contains common or expected values for the shared secret.  Where the shared secret used by an administrator is in the dictionary, the cost of the attack can drop by multiple orders of magnitude.
 
-Implementors and administrators SHOULD assume that a hobbyist attacker with modest resource can crack most shared secrets created by people in minutes, if not seconds.
+Implementers and administrators SHOULD assume that a hobbyist attacker with modest resource can crack most shared secrets created by people in minutes, if not seconds.
 
 Despite the ease of attacking MD5, it is still a common practice for some "cloud" and other RADIUS providers to send RADIUS/UDP packets over the Internet "in the clear".  It is also common practice for administrators to use "short" shared secrets, and to use shared secrets created by a person, or secrets derived from a limited character set.  Theses practice are easy to implement and follow, but they are highly insecure and MUST NOT be used.
 
@@ -764,7 +764,7 @@ The attack is fully mitigated only when both sides of the RADIUS conversation ar
 
 ### Unaffected Systems
 
-There are a number of systems which are not vulnerable to this attack.  The most important ones are systems which only perform EAP authentication, such as with 802.1X / WPA enterprise.  The EAP over RADIUS protocol is defined in {{RFC3579, Section 3.3}} which states explicitly:
+There are a number of systems which are not vulnerable to this attack.  The most important ones are systems which only perform EAP authentication, such as with 802.1X / WPA Enterprise.  The EAP over RADIUS protocol is defined in {{RFC3579, Section 3.3}} which states explicitly:
 
 > If any packet type contains an EAP-Message attribute it MUST also contain a Message-Authenticator.
 
@@ -945,7 +945,7 @@ Only one of the above commands should be run, as they are functionally equivalen
 
 Given the simplicity of creating strong secrets, there is no excuse for using weak shared secrets with RADIUS.  The management overhead of dealing with complex secrets is less than the management overhead of dealing with compromised networks.
 
-Over all, the security analysis of shared secrets is similar to that for TLS-PSK.  It is therefore RECOMMENDED that implementors manage shared secrets with same the practices which are recommended for TLS-PSK, as defined in {{?RFC8446}} Section E.7 and {{?RFC9257}} Section 4.
+Over all, the security analysis of shared secrets is similar to that for TLS-PSK.  It is therefore RECOMMENDED that implementers manage shared secrets with same the practices which are recommended for TLS-PSK, as defined in {{?RFC8446}} Section E.7 and {{?RFC9257}} Section 4.
 
 On a practical node, RADIUS implementers SHOULD provide tools for administrators to help them create and manage secure shared secrets.  The cost to do so is minimal for an implementer.  Providing such tools can further enable and motivate administrators to use secure practices.
 
@@ -989,7 +989,7 @@ Information about the visited network SHOULD be replaced or anonymized before pa
 
 Location information ({{RFC5580}} SHOULD either be omitted, or else it SHOULD be limited to the broadest possible information, such as country code. For example, {{I-D.tomas-openroaming}} says:
 
-> All OpenRoaming ANPs MUST support signalling of location information
+> All OpenRoaming ANPs MUST support signaling of location information
 
 This location information is required to include at the minimum the country code.  We suggest the country code SHOULD also be the maximum amount of location information which is sent over third-party networks.
 
