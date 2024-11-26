@@ -213,7 +213,7 @@ It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no lon
 
 ## RADIUS over the Internet
 
-As the insecurity of MD5 has been well known for decades, RADIUS traffic over the Internet was historically secured with IPSec as described in {{RFC3579, Section 4.2}}:
+As the insecurity of MD5 has been well known for decades, RADIUS traffic over the Internet was historically secured with IPsec as described in {{RFC3579, Section 4.2}}:
 
 > To address the security vulnerabilities of RADIUS/EAP,
 > implementations of this specification SHOULD support IPsec
@@ -224,7 +224,7 @@ As the insecurity of MD5 has been well known for decades, RADIUS traffic over th
 > authentication, integrity and replay protection.  IKE SHOULD be
 used for key management.
 
-The use of IPSec allowed RADIUS to be sent privately, and securely, across the Internet.  However, experience showed that TLS was in many ways simpler for implementations and deployment than IPSec.  While IPSec required operating system support, TLS was an application-space library.  This difference, coupled with the wide-spread adoption of TLS for HTTPS, ensures that it was often easier for applications to use TLS than IPSec.
+The use of IPsec allowed RADIUS to be sent privately, and securely, across the Internet.  However, experience showed that TLS was in many ways simpler for implementations and deployment than IPsec.  While IPsec required operating system support, TLS was an application-space library.  This difference, coupled with the wide-spread adoption of TLS for HTTPS, ensures that it was often easier for applications to use TLS than IPsec.
 
 RADIUS/TLS {{RFC6614}} and RADIUS/DTLS {{RFC7360}} were then defined in order to meet the crypto-agility requirements of {{RFC6421}}.  RADIUS/TLS has been in wide-spread use for about a decade, including eduroam {{EDUROAM}} {{?RFC7593}}, and more recently OpenRoaming {{OPENROAMING}} and {{I-D.tomas-openroaming}}.  RADIUS/DTLS has seen less use across the public Internet, but it still has multiple implementations.
 
@@ -244,11 +244,11 @@ These issues are only partly mitigated when the data carried within RADIUS use t
 
 However, these methods are not always used, or are not always available.  Even if these methods were used ubiquitously, they do not protect all of the information which is publicly available over RADIUS/UDP or RADIUS/TCP transports.  And even when TLS-based EAP methods are used, implementations have historically often skipped certificate validation, leading to password compromise ({{SPOOFING}}).  In many cases, users were not even aware that the server certificate was incorrect or spoofed, which meant that there was no way for the user to detect that anything was wrong.  Their passwords were simply handed to a spoofed server, with little possibility for the user to take any action to stop it.
 
-## Simply using IPSec or TLS is not enough
+## Simply using IPsec or TLS is not enough
 
-The use of a secure transport such as IPSec or TLS ensures complete privacy and security for all RADIUS traffic.  An observer of encrypted traffic is limited to knowing rough activity levels of a client or server.  That is, an observer can tell if there are a few users on a NAS, or many users on a NAS.  All other information is hidden from all observers.  Even with those limitations, it is not enough to say "use IPSec" and then move on to other issues.  There are many issues which can only be addressed via an informed approach.
+The use of a secure transport such as IPsec or TLS ensures complete privacy and security for all RADIUS traffic.  An observer of encrypted traffic is limited to knowing rough activity levels of a client or server.  That is, an observer can tell if there are a few users on a NAS, or many users on a NAS.  All other information is hidden from all observers.  Even with those limitations, it is not enough to say "use IPsec" and then move on to other issues.  There are many issues which can only be addressed via an informed approach.
 
-For example, it is possible for an attacker to record the session traffic, and later crack the TLS session key or IPSec parameters.  This attack could comprise all traffic sent over that connection, including EAP session keys.  If the cryptographic methods provide forward secrecy ({{?RFC7525, Section 6.3}}), then breaking one session provides no information about other sessions.  As such, it is RECOMMENDED that all cryptographic methods used to secure RADIUS conversations provide forward secrecy.  While forward secrecy will not protect individual sessions from attack, it will prevent attack on one session from being leveraged to attack other, unrelated, sessions.
+For example, it is possible for an attacker to record the session traffic, and later crack the TLS session key or IPsec parameters.  This attack could comprise all traffic sent over that connection, including EAP session keys.  If the cryptographic methods provide forward secrecy ({{?RFC7525, Section 6.3}}), then breaking one session provides no information about other sessions.  As such, it is RECOMMENDED that all cryptographic methods used to secure RADIUS conversations provide forward secrecy.  While forward secrecy will not protect individual sessions from attack, it will prevent attack on one session from being leveraged to attack other, unrelated, sessions.
 
 AAA servers SHOULD minimize the impact of such attacks by using a total throughput or time based limit before replacing the session keys.  The session keys can be replaced though a process of either re-keying the existing connection, or by opening a new connection and deprecating the use of the original connection.  Note that if the original connection if closed before a new connection is open, it can cause spurious errors in a proxy environment.
 
@@ -260,7 +260,7 @@ There are many security issues in addition to simply adding a secure transport. 
 
 The rest of this document begins a summary of issues with RADIUS, including showing just how trivial it is to crack RADIUS/UDP security.  We then mandate the use of secure transport, and describe what that requirement means in practice.  We give recommendations on how current systems can be migrated to using TLS.  We give suggestions for increasing the security of existing RADIUS transports, including a discussion of the authentication protocols carried within RADIUS.  We conclude with security and privacy considerations.
 
-As IPSec has been discussed previously in the context of RADIUS, we do not discuss it more here, except to say it is an acceptable solution for securing RADIUS traffic.  As the bulk of the current efforts are focused on TLS, this document likewise focuses on TLS.  We note that all of the issues raised here about the RADIUS protocol also apply to IPSec transport.  That is, when the application is not in charge of protocol security, the application is vulnerable to transport misconfigurations or attacks.
+As IPsec has been discussed previously in the context of RADIUS, we do not discuss it more here, except to say it is an acceptable solution for securing RADIUS traffic.  As the bulk of the current efforts are focused on TLS, this document likewise focuses on TLS.  We note that all of the issues raised here about the RADIUS protocol also apply to IPsec transport.  That is, when the application is not in charge of protocol security, the application is vulnerable to transport misconfigurations or attacks.
 
 ### A Comment on Specifications
 
@@ -316,7 +316,7 @@ There are a large number of issues with RADIUS.   The most serious is the BlastR
 
 Another issue is that RADIUS sends most information "in the clear", with obvious privacy implications.  Even if packets use Message-Authenticator for integrity checks, it is still possible for the average hobbyist who observes RADIUS traffic to perform brute-force attacks to crack even seemingly complex shared secrets.
 
-There is no way to fix the RADIUS protocol to address all of these issues.  The short-term fix is to require the use of Message-Authenticator for packet integrity checks.  The long-term solution is to wrap the protocol in a secure transport, such as TLS or IPSec.
+There is no way to fix the RADIUS protocol to address all of these issues.  The short-term fix is to require the use of Message-Authenticator for packet integrity checks.  The long-term solution is to wrap the protocol in a secure transport, such as TLS or IPsec.
 
 We address each of these issues in detail below.
 
@@ -348,7 +348,7 @@ With the exception of a few attributes such as User-Password, all RADIUS traffic
 
 More discussion of location privacy is given in {{?RFC6280}}, which defines an "Architecture for Location and Location Privacy in Internet Applications".  However, that work was too late to have any practical impact on the design of the RADIUS protocol, as {{RFC5580}} had already been published.
 
-The effect is that any observer of non-TLS RADIUS traffic is able to obtain a substantial amount of personal identifiable information (PII) about users.  The observer can tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in {{RFC5580}}, a users location may be determined to within 15 or so meters outdoors, and with "meter-level accuracy indoors" {{WIFILOC}}.  An observer can also use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
+The effect is that any observer of non-TLS RADIUS traffic is able to obtain a substantial amount of personal identifiable information (PII) about users.  The observer can tell who is logging in to the network, what devices they are using, where they are logging in from, and their approximate location (usually city).  With location-based attributes as defined in {{RFC5580}}, a user's location may be determined to within 15 or so meters outdoors, and with "meter-level accuracy indoors" {{WIFILOC}}.  An observer can also use RADIUS accounting packets to determine how long a user is online, and to track a summary of their total traffic (upload and download totals).
 
 When RADIUS/UDP is used across the public Internet, common Wi-Fi configurations allow the location of individuals to be tracked in real-time (usually 10 minute intervals), to within 15 meters.  The user devices can be identified, and also tracked.  Passwords can often be compromised by a resourceful attacker, or for MS-CHAP, by a hobbyist with a laptop.  Even when the packets do not contain any {{RFC5580}} location information for the user, the packets usually contain the MAC address of the Wi-Fi access point.  The MAC address and physical location of these devices are publicly available, and there are multiple services selling databases of this information.
 
@@ -466,19 +466,19 @@ This chain of unfortunate definitions means that there is only 15 bits of entrop
 
 Due to the above issues, implementations and new specifications SHOULD NOT use obfuscated attributes in CoA-Request or Disconnect-Request packets.
 
-## TLS-based EAP methods, RADIUS/TLS, and IPSec
+## TLS-based EAP methods, RADIUS/TLS, and IPsec
 
 The above analysis as to security and privacy issues focuses on RADIUS/UDP and RADIUS/TCP.  These issues are partly mitigated through the use secure transports, but it is still possible for information to "leak".
 
 When TLS-based EAP methods such as TTLS or PEAP are used, they still transport passwords inside of the TLS tunnel.  It is possible for an authentication server to terminate the TLS tunnel, and then proxy the inner data over RADIUS/UDP.  The design of both TTLS and PEAP make this process fairly trivial.  The inner data for TTLS is in Diameter AVP format, which can be trivially transformed to RADIUS attributes.  The inner data for PEAP is commonly EAP-MSCHAPv2, which can also be trivially transformed to bare EAP, or to MS-CHAPv2.
 
-Similar issues apply to RADIUS/TLS and IPSec.  A proxy receiving packets over IPSec terminates the secure tunnel, but then might forward the packets over an insecure transport protocol.  While this process could arguably be seen as a misconfiguration issue, it is never the less possible due to the design of the RADIUS protocol.  The design of RADIUS security is that it is "hop by hop", and there is no way for one "hop" to know anything about, or to control, the security of another "hop".
+Similar issues apply to RADIUS/TLS and IPsec.  A proxy receiving packets over IPsec terminates the secure tunnel, but then might forward the packets over an insecure transport protocol.  While this process could arguably be seen as a misconfiguration issue, it is never the less possible due to the design of the RADIUS protocol.  The design of RADIUS security is that it is "hop by hop", and there is no way for one "hop" to know anything about, or to control, the security of another "hop".
 
 The only solution to either issue would be to create a new protocol which is secure by design.  Unfortunately that path is not possible, and we are left with the recommendations contained in this document.
 
 ## Other Issues
 
-There are many other issues with RADIUS which are unrelated to security or privact.  As of the time of writing this document, those issues are being collated in {{ISSUES}}.  The bulk of the problems noted in that Wiki are operational considerations, along with inconsistencies in the previous RADIUS specifications.
+There are many other issues with RADIUS which are unrelated to security or privacy.  As of the time of writing this document, those issues are being collated in {{ISSUES}}.  The bulk of the problems noted in that Wiki are operational considerations, along with inconsistencies in the previous RADIUS specifications.
 
 As the focus of this document is security, it does not address problems with the RADIUS protocol in general.  For example, there are known problems with the RADIUS state machine.  There are common practices which are secure but which are operationally expensive.  RADIUS accounting is known to be inaccurate and often inconsistent.
 
@@ -504,7 +504,7 @@ This attribute is therefore ideally suited to an attackers purpose of injecting 
 
 While it is possible to use other attributes to achieve the same effect, the use of Proxy-State is simple, and is sufficient to trigger the issue.  For example, it is theoretically possible to use the User-Name attribute for this attack, if it is echoed back in an Access-Accept, or even as part of the the contents of a Reply-Message in an Access-Accept.  There is no much benefit in further researching that attack, as the mitigations for attacks using Proxy-State will also protect clients and servers from a similar attacks which use other attributes.
 
-The injected data and resulting MD5 collision allows the attacker to modify the packet contents almost at will, and the client will still accept the modified packet as being authentic.  The attack allows nearly arbitrary attributes to be added to the response.  Those attributes are simply part of the MD5 collision calculation, and do not substantially impace the cost of that calculation.
+The injected data and resulting MD5 collision allows the attacker to modify the packet contents almost at will, and the client will still accept the modified packet as being authentic.  The attack allows nearly arbitrary attributes to be added to the response.  Those attributes are simply part of the MD5 collision calculation, and do not substantially impact the cost of that calculation.
 
 We reiterate that since the RADIUS server can be convinced to authenticate packets using a prefix chosen by the attacker, there is no need for the attacker to know the shared secret.  This attack succeeds no matter how secure the shared secret is, the only mitigation is to use Message-Authenticator or TLS.
 
@@ -528,7 +528,7 @@ The result of this attack is a near-complete compromise of the RADIUS protocol. 
 
 While the above description uses Access-Reject responses, we reiterate that the root cause of the vulnerability is in the Access-Request packets.  The attack will therefore succeed even if the server responds with Access-Accept, Access-Challenge, or Protocol-Error {{?RFC7930}}.  The vulnerability in Access-Challenge allows MFA to be bypassed, as the attacker simply replaces the Access-Challenge with an Access-Accept.
 
-In addition to forging an Access-Accept for a user who has no credentials, the attacker can control the traffic of known and authenticated users.  Many modern Broadband Network Gateways (BNG)s, Wireless Lan Controllers (WLCs), and Broadband Remote Access Servers (BRAS) support configuring a dynamic HTTP redirect using Vendor Specific Attributes (VSA)s.  These VSAs are not protected by the shared secret, and could be injected into an Access-Accept in order to redirect a users traffic.  The attacker could then set up a malicious website to launch Zero-Day/Zero-Click attacks, driving subscribers to the website using an HTTP redirect.  This issue is compounded by the fact that many devices perform automatic HotSpot 1.0 style walled garden discovery.  The act of simply connecting to their home WiFi connect could be enough to compromise a subscriber's equipment.
+In addition to forging an Access-Accept for a user who has no credentials, the attacker can control the traffic of known and authenticated users.  Many modern Broadband Network Gateways (BNG)s, Wireless LAN Controllers (WLCs), and Broadband Remote Access Servers (BRAS) support configuring a dynamic HTTP redirect using Vendor Specific Attributes (VSA)s.  These VSAs are not protected by the shared secret, and could be injected into an Access-Accept in order to redirect a users traffic.  The attacker could then set up a malicious website to launch Zero-Day/Zero-Click attacks, driving subscribers to the website using an HTTP redirect.  This issue is compounded by the fact that many devices perform automatic HotSpot 1.0 style walled garden discovery.  The act of simply connecting to their home WiFi connect could be enough to compromise a subscriber's equipment.
 
 The following subsections define mitigations which can be used to protect clients and servers from this attack when using RADIUS/UDP or RADIUS/TCP.  However, we reiterate here, and in the rest of this document that the only long-term solution is to deprecate insecure transports entirely.  In the long term, implementers SHOULD remove all uses of RADIUS/UDP and RADIUS/TCP from their products.  Administrators SHOULD stop using RADIUS/UDP and RADIUS/TCP.
 
@@ -622,9 +622,9 @@ The next question is how to protect systems when legacy clients do not send Mess
 
 Where it is not possible for a server to be configured to require Message-Authenticator in Access-Request packets, it is still possible to largely protect servers from the attack.  We can motivate the solution by observing that the attack requires the server to receive packets containing Proxy-State, while “real” clients (i.e. not proxies) will never send Proxy-State.
 
-The mitigations in this section MUST NOT be used when the "require Message Authenticator" flag for a client is set to "true".
+The mitigations in this section MUST NOT be used when the "require Message-Authenticator" flag for a client is set to "true".
 
-A RADIUS server can still partially protect itself when the "require Message Authenticator" flag is set to "false", by adding an additional per-client boolean configuration flag, which we call “limit Proxy-State”.  The intention here is to permit the server to accept Access-Request packets which are missing Message-Authenticator, but also to discard the modified packets which are a vector for this attack.
+A RADIUS server can still partially protect itself when the "require Message-Authenticator" flag is set to "false", by adding an additional per-client boolean configuration flag, which we call “limit Proxy-State”.  The intention here is to permit the server to accept Access-Request packets which are missing Message-Authenticator, but also to discard the modified packets which are a vector for this attack.
 
 When the flag is set to "false", RADIUS servers MUST follow legacy behavior for enforcing the existence of Message-Authenticator in Access-Request packets, as with the previous section.
 
@@ -722,11 +722,11 @@ Despite this reality, some "security" sites have recommended "securing" the netw
 
 Diameter {{?RFC6733}} is the closest protocol in functionality to RADIUS, but the Diameter use-case is applicable to large-scale telecommunications and internet service providers (ISPs).  Support for Diameter is not available in equipment available to consumers or enterprises.  As such, replacing RADIUS with Diameter is not an option.
 
-Other proposals for protocols to replace RADIUS are even less effective.  TACACS+ {{?RFC8907}} has some overlap with RADIUS for administrator login to network devices, but it cannot be used outside of that limited scope.  TACACS+ does not support 802.1X, end-user authentication, or end-user accounting.  It is therefoe impossible for an ISP or enterprise to replace RADIUS with TACACS+.
+Other proposals for protocols to replace RADIUS are even less effective.  TACACS+ {{?RFC8907}} has some overlap with RADIUS for administrator login to network devices, but it cannot be used outside of that limited scope.  TACACS+ does not support 802.1X, end-user authentication, or end-user accounting.  It is therefore impossible for an ISP or enterprise to replace RADIUS with TACACS+.
 
 Kerberos {{?RFC4120}} is also not a option.  It is most generally used to authenticate applications, when the underlying system already has network access.  Kerberos also does not support 802.1X, and does not support accounting.
 
-The situation is much the same with any proposal to replace RADIUS with IPSec.  While IPSec does authenticates devices prior to bringing up the VPN, those devices must already have network access.  IPSec also requires that the end-user traffic be transported over the IPSec connection, where RADIUS does not transport any end-user traffic.
+The situation is much the same with any proposal to replace RADIUS with IPsec.  While IPsec does authenticates devices prior to bringing up the VPN, those devices must already have network access.  IPsec also requires that the end-user traffic be transported over the IPsec connection, where RADIUS does not transport any end-user traffic.
 
 In conclusion, recommendations to use alternate protocols are, at best, misguided.  We do not recommend following "security" advice which is based on a fundamental misunderstanding of networking protocols.
 
@@ -734,7 +734,7 @@ In conclusion, recommendations to use alternate protocols are, at best, misguide
 
 The most important outcome of this attack for network operators is that where possible, all RADIUS traffic should use TLS transport between client and server.  
 
-Methods other than IPSec to mitigate the attack are less secure, they still fail at adding privacy, and are therefore less useful.  We recognize that not all networking equipment supports TLS transport, so we therefore give additional recommendations here which operators can follow to help mitigate the attack.
+Methods other than IPsec to mitigate the attack are less secure, they still fail at adding privacy, and are therefore less useful.  We recognize that not all networking equipment supports TLS transport, so we therefore give additional recommendations here which operators can follow to help mitigate the attack.
 
 All networking equipment should be physically secure.  There is no reason to have critical portions of networking infrastructure physically accessibly to the public.  Where networking equipment must be in public areas (e.g. access points), that equipment SHOULD NOT have any security role in the network.  Instead, any network security validation or enforcement SHOULD be done by separate equipment which is in a physically secure location.
 
@@ -848,11 +848,11 @@ Intrusion detection systems can be updated to detect and/or warn about the attac
 
    Note that the check should be for packets sent by the RADIUS server, and not for packets received by the NAS.  The attacker can modify packets to "hide" Proxy-State in another attribute, such as Vendor-Specific.
 
-6. Any RADIUS traffic is sent over UDP or TCP transport, without IPSec or TLS.
+6. Any RADIUS traffic is sent over UDP or TCP transport, without IPsec or TLS.
 
    Action: Warn that the system uses deprecated transport protocols, and should be upgraded.
 
-7. Any RADIUS traffic is sent external to the organization over UDP or TCP transport, without IPSec or TLS.
+7. Any RADIUS traffic is sent external to the organization over UDP or TCP transport, without IPsec or TLS.
 
    Action: Warn that this is an insecure configuration, and can expose users private data, identities, passwords, locations, etc. to unknown attackers.
 
@@ -868,7 +868,7 @@ RADIUS/UDP and RADIUS/TCP MUST NOT be used outside of secure networks.  A secure
 
 However, administrators should not assume that such uses are always secure.  An attacker who breaks into a critical system could use that access to view RADIUS traffic, and thus be able to attack it.  Similarly, a network misconfiguration could result in the RADIUS traffic being sent over an insecure network.
 
-Neither the RADIUS client nor the RADIUS server would be aware of any network misconfiguration (e.g. such as could happen with IPSec).  Neither the RADIUS client nor the RADIUS server would be aware of any attacker snooping on RADIUS/UDP or RADIUS/TCP traffic.
+Neither the RADIUS client nor the RADIUS server would be aware of any network misconfiguration (e.g. such as could happen with IPsec).  Neither the RADIUS client nor the RADIUS server would be aware of any attacker snooping on RADIUS/UDP or RADIUS/TCP traffic.
 
 In contrast, when TLS is used, the RADIUS endpoints are aware of all security issues, and can enforce any necessary security policies.
 
@@ -876,11 +876,11 @@ Any use of RADIUS/UDP and RADIUS/TCP is therefore NOT RECOMMENDED, even when the
 
 ## Mandating Secure transports
 
-All systems which send RADIUS packets outside of secure networks MUST use either IPSec, RADIUS/TLS, or RADIUS/DTLS.  For operational and security reasons, it is RECOMMENDED to use RADIUS/TLS or RADIUS/DTLS instead of IPSec.
+All systems which send RADIUS packets outside of secure networks MUST use either IPsec, RADIUS/TLS, or RADIUS/DTLS.  For operational and security reasons, it is RECOMMENDED to use RADIUS/TLS or RADIUS/DTLS instead of IPsec.
 
-Unlike (D)TLS, use of IPSec means that applications are generally unaware of transport-layer security. Any problem with IPSec such as configuration issues, negotiation or re-keying problems are typically  presented to the RADIUS servers as 100% packet loss.  These issues may occur at any time, independent of any changes to a RADIUS application using that transport.  Further, network misconfigurations which remove all security are completely transparent to the RADIUS application: packets can be sent over an insecure link, and the RADIUS server is unaware of the failure of the security layer.
+Unlike (D)TLS, use of IPsec means that applications are generally unaware of transport-layer security. Any problem with IPsec such as configuration issues, negotiation or re-keying problems are typically  presented to the RADIUS servers as 100% packet loss.  These issues may occur at any time, independent of any changes to a RADIUS application using that transport.  Further, network misconfigurations which remove all security are completely transparent to the RADIUS application: packets can be sent over an insecure link, and the RADIUS server is unaware of the failure of the security layer.
 
-In contrast, (D)TLS gives the RADIUS application completely knowledge and control over transport-layer security.  The failure cases around (D)TLS are therefore often clearer, easier to diagnose and faster to resolve than failures in IPSec.   For example, a failed TLS connection may return a "connection refused" error to the application, or any one of many TLS errors indicating which exact part of the TLS conversion failed during negotiation.
+In contrast, (D)TLS gives the RADIUS application completely knowledge and control over transport-layer security.  The failure cases around (D)TLS are therefore often clearer, easier to diagnose and faster to resolve than failures in IPsec.   For example, a failed TLS connection may return a "connection refused" error to the application, or any one of many TLS errors indicating which exact part of the TLS conversion failed during negotiation.
 
 ## Crypto-Agility
 
@@ -900,7 +900,7 @@ We can now finalize the work began in {{RFC6421}}.  This document updates {{RFC2
 
 We recognize that RADIUS/UDP will still be in use for many years, and that new standards may require some modicum of privacy.  As the BlastRADIUS attack shows, RADIUS/UDP security is inadequate.  The solution is not to fix RADIUS/UDP.  The solution is to deprecate it entirely.
 
-All new security and privacy requirements in RADIUS MUST be provided by a secure transport layer such as TLS or IPSec.  As noted above, simply using IPsec is not always enough, as the use (or not) of IPsec is unknown to the RADIUS application.
+All new security and privacy requirements in RADIUS MUST be provided by a secure transport layer such as TLS or IPsec.  As noted above, simply using IPsec is not always enough, as the use (or not) of IPsec is unknown to the RADIUS application.
 
 The restriction forbidding new cryptographic work in RADIUS does not apply to the data being transported in RADIUS attributes.  For example, a new authentication method could use new cryptographic methods, and would be permitted to be transported in RADIUS.  This authentication method could be a new EAP method, or any other data which is opaque to the RADIUS transport.  In those cases, RADIUS serves as a transport layer for the authentication method.  The authentication data is treated as opaque data for the purposes of Access-Request, Access-Challenge, etc. packets.  There would be no need for the RADIUS protocol to define any new cryptographic methods in order to transport this data.
 
@@ -1020,7 +1020,7 @@ Before suggesting a method for creating the CUI, we note that {{RFC4372}} Sectio
 The CUI SHOULD be created via a construct similar to what is given below, where "+" indicates concatenation:
 
 ~~~~
-CUI = HASH(visited network data + user identifier + key)
+CUI = HASH(Visited Network Data + User Identifier + Key)
 ~~~~
 
 This construct has the following functional parameters.
@@ -1029,17 +1029,17 @@ This construct has the following functional parameters.
 >
 >> A cryptographic hash function.  It is RECOMMENDED to use an HMAC instead of a hash function.
 
-> visited network data
+> Visited Network Data
 >
 >> Data which identifies the visited network.
 >>
 >> This data could be the Operator-Name attribute ({{RFC5580}} Section 4.1).
 
-> user identifier
+> User Identifier
 >
 >> The site-local user identifier.  For tunneled EAP methods such as PEAP or TTLS, this could be the user identity which is sent inside of the TLS tunnel.
 
-> key
+> Key
 >
 >> A secret known only to the local network.  The key is generally a large random string.  It is used to help prevent dictionary attacks on the CUI.
 
@@ -1054,7 +1054,7 @@ We note that the above recommendation is not invertible.  That is, given a parti
 If this tracking is too complex for a network, it is possible to create the CUI via an invertible encryption process as follows:
 
 ~~~~
-CUI = ENCRYPT(key, visited network data + user identifier)
+CUI = ENCRYPT(Key + Visited Network Data + User Identifier)
 ~~~~
 
 This construct has the following functional parameters.
@@ -1063,17 +1063,17 @@ This construct has the following functional parameters.
 >
 >> A cryptographically secure encryption function.
 
-> key
+> Key
 >
 >> The encryption key.  Note that the same key must not be used for more both hashing and encryption.
 
-> visited network data
+> Visited Network Data
 >
 >> Data which identifies the visited network.
 >>
 >> This data could be the Operator-Name attribute ({{RFC5580}} Section 4.1).
 
-> user identifier
+> User Identifier
 >
 >> The site-local user identifier.  For tunneled EAP methods such as PEAP or TTLS, this could be the user identity which is sent inside of the TLS tunnel.
 
@@ -1097,7 +1097,7 @@ Organizations MAY still use User-Password attributes within their own systems, f
 
 Anyone can cause a NAS to send Access-Request packets at will, simply by attempting to requesting network access, or login permissions from the NAS.  If this login process is not rate-limited, it can be abused by an attacker to perform dictionary attacks.
 
-In order to prvent these brute-force attacks, servers which originate Access-Reject packets MUST enforce a minimum delay between reception of the Access-Request, and transmission of a corresponding Access-Reject.  This delay SHOULD be configurable.  Experience shows that values between one (1) second and ten (10) seconds work well in practice.
+In order to prevent these brute-force attacks, servers which originate Access-Reject packets MUST enforce a minimum delay between reception of the Access-Request, and transmission of a corresponding Access-Reject.  This delay SHOULD be configurable.  Experience shows that values between one (1) second and ten (10) seconds work well in practice.
 
 Systems which simply proxy Access-Reject packets MUST NOT add any artificial delays to those packets.  Doing so would result in delays accumulating across a chain of proxies.
 
@@ -1107,7 +1107,7 @@ Servers SHOULD also add a small random jitter to the delay for a particular pack
 
 Both clients and servers SHOULD use constant-time operations to compare received versus calculated values which depend on secret information.  If comparison operations are stopped as soon as a difference is seen, an attacker could using timing attacks to determine the correct underlying values, even without seeing them.  A constant-time operation instead compares the entire value, accumulating the result along the way.  Only when the entire value has been examined does the comparison return a "match" or "no-match" result.
 
-Constant-time operations SHOULD be used for the Request Authenticator and Response-Authenticator fields.  Constant time comparisons SHOULD be used for attributes which directly contain secret values (e.g. User-Password), or are derived from secret values (e.g. CHAP-Password, and Message-Authenticator).
+Constant-time operations SHOULD be used for the Request Authenticator and Response Authenticator fields.  Constant time comparisons SHOULD be used for attributes which directly contain secret values (e.g. User-Password), or are derived from secret values (e.g. CHAP-Password, and Message-Authenticator).
 
 ## Minimize the use of Proxies
 
@@ -1184,7 +1184,7 @@ Implementers and administrators MUST therefore treat MS-CHAP and MS-CHAPv2 as be
 
 As MS-CHAP can be trivially broken by an observer, this document therefore mandates that MS-CHAP or MS-CHAPv2 authentication data carried in RADIUS MUST NOT be sent in situations where the that data is visible to an observer.  MS-CHAP or MS-CHAPv2 authentication data MUST NOT be sent over RADIUS/UDP or RADIUS/TCP.
 
-As MS-CHAP offers no practical benefits over PAP and has many downsides, MS-CHAP authentication SHOULD NOT be used even when the transport protocol is secure, as with IPSec or RADIUS over TLS.
+As MS-CHAP offers no practical benefits over PAP and has many downsides, MS-CHAP authentication SHOULD NOT be used even when the transport protocol is secure, as with IPsec or RADIUS over TLS.
 
 Existing RADIUS client implementations SHOULD deprecate the use of MS-CHAPv1 and MS-CHAPv2.  Clients SHOULD forbid new configurations from enabling MS-CHAP authentication.  New RADIUS clients MUST NOT implement the attributes used for MS-CHAPv1 and MS-CHAPv2 authentication (MS-CHAP-Challenge and MS-CHAP-Response).
 
@@ -1192,7 +1192,7 @@ Existing RADIUS client implementations SHOULD deprecate the use of MS-CHAPv1 and
 
 An attacker may choose to ignore the wire protocol entirely, and bypass all of the issues described earlier in this document.  An attacker could instead focus on the database which holds user credentials such as account names and passwords.  At the time of this writing, databases such as {{PWNED}} claim to have records of over twelve billion user accounts which have been compromised.  User databases are therefore highly sought-after targets.
 
-The attack discussed in this section is dependent on vulnerabilities with the credential database, and does not assume an attacker can see or modify RADIUS traffic.  As a result, issues reaised here apply equally well when TTLS, PEAP, or RADIUS/TLS are used.  The success of the attack depends only on how the credentials are stored in the database.  Since the choice of authentication method affects the way credentials are stored in the database, the security of that dependency needs to be discussed and explained.
+The attack discussed in this section is dependent on vulnerabilities with the credential database, and does not assume an attacker can see or modify RADIUS traffic.  As a result, issues raised here apply equally well when TTLS, PEAP, or RADIUS/TLS are used.  The success of the attack depends only on how the credentials are stored in the database.  Since the choice of authentication method affects the way credentials are stored in the database, the security of that dependency needs to be discussed and explained.
 
 Some organizations may desire to increase the security of their network by avoiding PAP, and using CHAP or MS-CHAP, instead.  These attempts are misguided.  If simple password-based methods must be used, in almost all situations, the security of the network as a whole is increased by using PAP in preference to CHAP or MS-CHAP.  The reason is found through a straightforward risk analysis, which we explain in more detail below.
 
@@ -1214,7 +1214,7 @@ The only protection from this attack is to ensure that the secret is long, and d
 
 ### CHAP and MS-CHAP Password Storage
 
-In contrast with PAP, when CHAP or MS-CHAP is used, those methods do not expose a clear-text password to the RADIUS server, but instead a hashed transformation of it.  That hash output is in theory secure even if an attacker can observe it.  While CHAP is still believed to be secure, MS-CHAP is not secure, as we saw ealier in [](#ms-chap).  For the purposes of this section, we will focus on the construct of "hashed passwords", and will ignore any attacks specific to MS-CHAP.  We will also note that EAP-MD5 {{?RFC3748, Section 5.4}} is essentially CHAP, and has the same security analysis.
+In contrast with PAP, when CHAP or MS-CHAP is used, those methods do not expose a clear-text password to the RADIUS server, but instead a hashed transformation of it.  That hash output is in theory secure even if an attacker can observe it.  While CHAP is still believed to be secure, MS-CHAP is not secure, as we saw earlier in [](#ms-chap).  For the purposes of this section, we will focus on the construct of "hashed passwords", and will ignore any attacks specific to MS-CHAP.  We will also note that EAP-MD5 {{?RFC3748, Section 5.4}} is essentially CHAP, and has the same security analysis.
 
 The hash transformations for CHAP and MS-CHAP depend on a random challenge.  The intent was to increase security, but their construction makes strong requirements on the form in which user credentials are stored.
 
@@ -1234,7 +1234,7 @@ There have been claims that it is preferable to use CHAP-Password as it does not
 
 The CHAP-Password attribute depends on the hash of a visible Request Authenticator (or CHAP-Challenge) and the users password.  The obfuscated User-Password depends on the same Request Authenticator, and on the RADIUS shared secret.  For an attacker, the difference between the two calculations is minimal.  They can both be attacked with similar amounts of effort, as they use similar constructs.   As a result, any security analysis which makes the claim that "User-Password insecure because it uses MD5" ignores the fact that the CHAP-Password attribute is constructed through substantially the same method.
 
-An attacker who can observe the CHAP-Password and CHAP-Challenge can also perform an off-line dictionary attack on the observed values.  The complexity of cracking CHAP-Password is similar to that noted above for cracking RADIUS packets, which was discussed abve in [](#cracking).  The difference between the two attacks is that the shared secrets are more likely to be secure than passwords for an end-user.
+An attacker who can observe the CHAP-Password and CHAP-Challenge can also perform an off-line dictionary attack on the observed values.  The complexity of cracking CHAP-Password is similar to that noted above for cracking RADIUS packets, which was discussed above in [](#cracking).  The difference between the two attacks is that the shared secrets are more likely to be secure than passwords for an end-user.
 
 An attacker who can crack one users password can gain network access as that user, or even administrator access to network devices.  In contrast, an attacker who can crack the shared secret can gain network access as any user, and perform any authorization.  The result is that it is more valuable to crack shared secrets, even if the underlying attack process is essentially the same.
 
@@ -1248,7 +1248,7 @@ In contrast, CHAP is highly insecure, as any database compromise results in the 
 
 This security difference is shown not just in the {{PWNED}} database, but also in attacks on RADIUS systems {{EXPLOIT}}, where attackers identified a vulnerable RADIUS system, and then:
 
-> utilized SQL commands to dump the credentials \[T1555\], which contained both cleartext and hashed passwords for user and administrative accounts. 
+> utilized SQL commands to dump the credentials \[T1555\], which contained both clear-text and hashed passwords for user and administrative accounts. 
 
 The attack proceeded to leverage those passwords to gain more permissions:
 
@@ -1353,7 +1353,7 @@ In the interest of simplifying the above explanations, this section provides a s
 
 > * Do not proxy from secure to insecure transports
 >
-> If user information (credentials or identities) is received over a secure transport (IPSec, RADIUS/TLS, TLS-based EAP method), then proxying the protected data over RADIUS/UDP or RADIUS/TCP degrades security and privacy.
+> If user information (credentials or identities) is received over a secure transport (IPsec, RADIUS/TLS, TLS-based EAP method), then proxying the protected data over RADIUS/UDP or RADIUS/TCP degrades security and privacy.
 
 > * Prefer EAP authentication methods to non-EAP methods.
 >
@@ -1434,7 +1434,7 @@ Many thanks to Nadia Heninger and the rest of the BlastRADIUS team, along with H
 
 # Changelog
 
-* 01 - added more discussion of IPSec, and move TLS-PSK to its own document,
+* 01 - added more discussion of IPsec, and move TLS-PSK to its own document,
 
 * 02 - Added text on Increasing the Security of Insecure Transports
 
