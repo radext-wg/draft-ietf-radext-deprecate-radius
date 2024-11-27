@@ -556,7 +556,7 @@ That is, such an implementation may receive packets over TLS transport, and then
 
 It is therefore useful for systems to always include Message-Authenticator in Access-Request packets, even when TLS is used.  While this practice does not increase the security of a particular TLS connection, it will increase the security of the larger RADIUS system.
 
-The long term solution to the BlastRADIUS attack is to stop using insecure transport protocols, and switch to secure ones such as TLS.  We recognize that switching to TLS ransport may require a significant amount of effort.  There is a substantial amount of work to perform in updating implementations, performing interoperability tests, changing APIs, changing user interfaces, and updating documentation.  This effort cannot realistically be done in a short time frame.
+The long term solution to the BlastRADIUS attack is to stop using insecure transport protocols, and switch to secure ones such as TLS.  We recognize that switching to TLS transport may require a significant amount of effort.  There is a substantial amount of work to perform in updating implementations, performing interoperability tests, changing APIs, changing user interfaces, and updating documentation.  This effort cannot realistically be done in a short time frame.
 
 There is therefore a need for a short-term action which can be implemented by RADIUS clients and servers which is both simple to do, and which is known to be safe.  The recommendations in this section are known to protect implementations from the attack; to be simple to implement; and also to allow easy upgrade without breaking existing deployments.
 
@@ -620,7 +620,7 @@ We mandate the following new behavior for RADIUS servers:
 >
 > If "require Message-Authenticator" flag is set to “true”, the server MUST examine the Access-Request packets for the existence of the Message-Authenticator attributes. Access-Request packets which do not contain Message-Authenticator MUST be silently discarded.  The server MUST then validate the contents of the Message-Authenticator and discard packets which fail this validation ({{RFC2869, Section 5.14}}).
 >
-> Servers MUST NOT discard a packet based on the location of the Message-Authenticator attribute.  We extend {{RFC2865, Section 5}} to state that RADIUS clients and servers MUST NOT discard packets based on the order or location of any attribute.  If the Message-Authenticator passes validation, then the packet is authenticatic and it has not been modified.  he location of Message-Authenticator within the packet does not matter for authenticated packets.
+> Servers MUST NOT discard a packet based on the location of the Message-Authenticator attribute.  We extend {{RFC2865, Section 5}} to state that RADIUS clients and servers MUST NOT discard packets based on the order or location of any attribute.  If the Message-Authenticator passes validation, then the packet is authentic and it has not been modified.  The location of Message-Authenticator within the packet does not matter for authenticated packets.
 
 The default value for the "require Message-Authenticator" is “false” because many RADIUS clients do not send the Message-Authenticator attribute in all Access-Request packets.  Defaulting to a value of "true" would mean that the RADIUS server would be unable to accept packets from many legacy RADIUS clients, and existing networks would break.
 
@@ -650,15 +650,15 @@ The next question is how to protect systems when legacy clients do not send Mess
 
 We mandate the following new behavior for RADIUS servers:
 
-> When receiving an Access-Request which passes the above checks the "require Message-Authenticator" flag is set to "false", servers MUST then consult the value of the "limit Proxy-State" flag for the client.
+> When receiving an Access-Request which passes the above checks and the "require Message-Authenticator" flag is set to "false", servers MUST then consult the value of the "limit Proxy-State" flag for the client.
 >
-> If the "limit Proxy-State flag is set to "false", RADIUS servers MUST follow legacy behavior for validating and enforcing the existence of Message-Authenticator in Access-Request packets.  For example, enforcing the requirement that all packets containing EAP-Message also contain a Message-Authenticator attributes, but otherwise accepting and validating the Message-Authenticator attribute if it is present, while taking no action if the attribute is missing.  This behavior is the same as mandated by the previous section.
+> If the "limit Proxy-State" flag is set to "false", RADIUS servers MUST follow legacy behavior for validating and enforcing the existence of Message-Authenticator in Access-Request packets.  For example, enforcing the requirement that all packets containing EAP-Message also contain a Message-Authenticator attributes, but otherwise accepting and validating the Message-Authenticator attribute if it is present, while taking no action if the attribute is missing.  This behavior is the same as mandated by the previous section.
 >
 > If the "limit Proxy-State" flag is set to "true",  RADIUS servers MUST require that all Access-Request packets which contain a Proxy-State attribute also contain a Message-Authenticator attribute.  Access-Request packets which contain Proxy-State but no Message-Authenticator MUST be silently discarded.
 >
 > If the packet does contain a Message-Authenticator. servers MUST validate its contents, and discard packets which fail this validation ({{RFC2869, Section 5.14}}).
 
-This flag is motivated by the realization that most NASes (i.e. not proxies) will never send Proxy-State in an Access-Request packet.  If a server sees Proxy-State in a packet from a NAS, it is a strong signal that an attackert is attempting the BlastRADIUS attack.  The BlastRADIUS attack depends on the construction and behavior of Proxy-State, and the attack is essentially impossible without using Proxy-State in an Access-Request.
+This flag is motivated by the realization that most NASes (i.e. not proxies) will never send Proxy-State in an Access-Request packet.  If a server sees Proxy-State in a packet from a NAS, it is a strong signal that an attacker is attempting the BlastRADIUS attack.  The BlastRADIUS attack depends on the construction and behavior of Proxy-State, and the attack is essentially impossible without using Proxy-State in an Access-Request.
 
 It is therefore safe to add a configuration flag which checks for Proxy-State, because well-behaving NASes will never send it.  The only time the server will see a Proxy-State from a NAS is when the attack is taking place.
 
@@ -674,7 +674,7 @@ The "require Message-Authenticator" flag is needed in order to secure the RADIUS
 
 However, it may not be possible to upgrade all RADIUS clients.  Some products may no longer be supported, or some vendors have gone out of business.  Even if upgrades are available, the upgrade process may impact production networks, which has a cost.  There is therefore a need for RADIUS servers to protect themselves from to thte BlastRADIUS attack, while at the same time being compatible with legacy RADIUS client implementations.
 
-Enabled the "limit Proxy-State" flag allows legacy (i.e. non-upgraded) clients to be used without substantially compromising on security.  While it is theoretically possible to perform the BlastRADIUS attack via attributes other than Proxy-State, no such exploits are known at this time.  Any such exploit would require that the server receive fields under the attackers control (e.g. User-Name), and echo them back in a response.  Such attacks are only possible when the server is configured to echo back attacker-controlled data, which is not the default behavior for most servers.
+Enabling the "limit Proxy-State" flag allows legacy (i.e. non-upgraded) clients to be used without substantially compromising on security.  While it is theoretically possible to perform the BlastRADIUS attack via attributes other than Proxy-State, no such exploits are known at this time.  Any such exploit would require that the server receive fields under the attackers control (e.g. User-Name), and echo them back in a response.  Such attacks are only possible when the server is configured to echo back attacker-controlled data, which is not the default behavior for most servers.
 
 As a result, these two flags allow the maximum amount of security while having the minimum distruption to operational networks.  For the remaining attack vectors, is is RECOMMENDED that servers which echo back user-supplied data in responses do so only when the "require Message-Authenticator" flag is set to "true".  If such user-supplied data is echoed back in responses when the "require Message-Authenticator" flag is set "false", then the BlastRADIUS attack is theoretically still possible, even though no exploit is currently available.
 
@@ -719,7 +719,7 @@ Authenticator has been verified.  No further processing of discarded packets sho
 >
 > The client MUST validate the contents of the Message-Authenticator and discard packets which fail this validation ({{RFC2869, Section 5.14}}).
 >
-> Clients MUST NOT discard a packet based on the location of the Message-Authenticator attribute.  We extend {{RFC2865, Section 5}} to state that RADIUS clients and servers MUST NOT discard packets based on the order or location of any attribute.  If the Message-Authenticator passes validation, then the packet is authenticatic and it has not been modified.  he location of Message-Authenticator within the packet does not matter for authenticated packets.
+> Clients MUST NOT discard a packet based on the location of the Message-Authenticator attribute.  We extend {{RFC2865, Section 5}} to state that RADIUS clients and servers MUST NOT discard packets based on the order or location of any attribute.  If the Message-Authenticator passes validation, then the packet is authentic and it has not been modified.  The location of Message-Authenticator within the packet does not matter for authenticated packets.
 
 When the response is discarded, the client MUST behave as if no response was received.  That is, any existing retransmission timers MUST NOT be modified as a result of receiving a packet which is silently discarded.
 
