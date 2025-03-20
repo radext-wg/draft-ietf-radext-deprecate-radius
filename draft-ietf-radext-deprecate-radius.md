@@ -1206,7 +1206,9 @@ Constant-time operations SHOULD be used for the Request Authenticator and Respon
 
 ## Minimize the use of Proxies
 
-The design of RADIUS means that even when RADIUS/TLS is used, every intermediate proxy has access to all of the information in each packet.  The only way to secure the network from such observers is to minimize the use of proxies.
+The design of RADIUS means that even when RADIUS/TLS is used, every intermediate proxy has access to all of the information in each packet.  Those observers may have been compromised by a bad actor and so the only way to secure the network is to minimize the use of proxies. The use of dynamic discovery described in [](#dynamic-discover) means that the number of intermediate proxies is minimized if not eliminated.
+
+However, the server on the visited network still acts as a proxy between the NAS and the home network.  As a result, all of the above analysis still applies when {{?RFC7585}} peer discovery is used.  There is an intermediate system which may have access to passwords or PII.  The only solution is using end-to-end security for AAA, which would involve a completely new protocol.
 
 Where it is still necessary to use intermediate proxies such as with eduroam {{EDUROAM}} and OpenRoaming {{OPENROAMING}}, it is RECOMMENDED to use EAP methods instead of bare PAP, CHAP, or MS-CHAP.  If passwords are used, they can be can be protected from being seen by proxies via TLS-based EAP methods such as EAP-TTLS or PEAP.  Passwords can also be omitted entirely from being sent over the network, as with EAP-TLS {{?RFC9190}} or EAP-pwd {{?RFC5931}}.
 
@@ -1362,12 +1364,6 @@ If more complex authentication methods are needed, there are a number of EAP met
 We also note that the TLS-based EAP methods which transport passwords also hide the passwords from intermediate RADIUS proxies, which also increases security.
 
 Finally, password-based EAP methods still send PAP / CHAP / MS-CHAP inside of the TLS tunnel.  As such, the security of a home server which checks those passwords is subject to the analysis above about PAP versus CHAP, along with the issues of storing passwords in a database.
-
-## Eliminating Proxies
-
-The best way to avoid malicious proxies is to eliminate proxies entirely.  The use of dynamic peer discovery ({{?RFC7585}}) means that the number of intermediate proxies is minimized.
-
-However, the server on the visited network still acts as a proxy between the NAS and the home network.  As a result, all of the above analysis still applies when {{?RFC7585}} peer discovery is used.  There is an intermediate system which may have access to passwords or PII.  The only solution is using end-to-end security for AAA, which would involve a completely new protocol.
 
 ## Accounting Is Imperfect
 
