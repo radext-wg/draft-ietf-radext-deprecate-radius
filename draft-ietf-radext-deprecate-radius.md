@@ -156,7 +156,7 @@ informative:
 venue:
   group: RADEXT
   mail: radext@ietf.org
-  github: freeradius/deprecating-radius.git
+  github: radext-wg/draft-ietf-radext-deprecate-radius
 
 --- abstract
 
@@ -552,7 +552,7 @@ The new behaviors described in this section apply only when UDP or TCP transport
 
 However, clients and servers SHOULD include Message-Authenticator in Access-Request packets, and in responses to those Access-Requests, even then those packets are sent over TLS or DTLS transports.  While the attribute serves no security purpose, we recommend including Message-Authenticator because of the behavior of some implementations.  Some RADIUS proxies are known to automatically include Message-Authenticator in forwarded packets when the attribute is seen in the packet received from the client.
 
-That is, such an implementation may receive packets over TLS transport, and then forward (or return) them over insecure transports such as UDP.  If such an implementation receives a packet over TLS which contains Message-Authenticator, it will add the Message-Authenticator attribute to the packet which is sent over UDP.  Including Message-Authenticator in packets sent over insecure transports is important for increasing RADIUS securiry.
+That is, such an implementation may receive packets over TLS transport, and then forward (or return) them over insecure transports such as UDP.  If such an implementation receives a packet over TLS which contains Message-Authenticator, it will add the Message-Authenticator attribute to the packet which is sent over UDP.  Including Message-Authenticator in packets sent over insecure transports is important for increasing RADIUS security.
 
 It is therefore useful for systems to always include Message-Authenticator in Access-Request packets, even when TLS is used.  While this practice does not increase the security of a particular TLS connection, it will increase the security of the larger RADIUS system.
 
@@ -576,7 +576,7 @@ Note that in some network architectures, the attack can be mitigated simply by u
 
 We define new configuration flags for clients and servers.  The behavior and meaning of these flags will be discussed below.  Introducing these flags before discussing their meaning makes the subsequent discussion simpler and easier to understand.
 
-The goal of these flags is to secure the RADIUS protocol without preventing client and server communication between legacy and uopgraded systems.  These flags instead allow a gradual migration process from legacy RADIUS, to fully secure RADIUS with all of the mitigations in place.
+The goal of these flags is to secure the RADIUS protocol without preventing client and server communication between legacy and upgraded systems.  These flags instead allow a gradual migration process from legacy RADIUS, to fully secure RADIUS with all of the mitigations in place.
 
 We mandate the following new configuration flags for RADIUS implementations when using UDP or TCP transport.  These flags MUST be ignored when DTLS or TLS transport is used.
 
@@ -616,7 +616,7 @@ We mandate the following new behavior for RADIUS servers:
 >
 > If "require Message-Authenticator" flag is set to “false”, RADIUS servers MUST follow legacy behavior for validating and enforcing the existence of Message-Authenticator in Access-Request packets.  For example, enforcing the requirement that all packets containing EAP-Message also contain a Message-Authenticator attributes, but otherwise accepting and validating the Message-Authenticator attribute if it is present, while taking no action if the attribute is missing.
 >
-> If "require Message-Authenticator" flag is set to "false", RADIUS servers MUST also check the value of the "limit Proxy-State" flag and either accept or discard the packet, based on the checks discussed in []{#limit-proxy-state}, below.
+> If "require Message-Authenticator" flag is set to "false", RADIUS servers MUST also check the value of the "limit Proxy-State" flag and either accept or discard the packet, based on the checks discussed in [](#limit-proxy-state), below.
 >
 > If "require Message-Authenticator" flag is set to “true”, the server MUST examine the Access-Request packets for the existence of the Message-Authenticator attributes. Access-Request packets which do not contain Message-Authenticator MUST be silently discarded.  The server MUST then validate the contents of the Message-Authenticator and discard packets which fail this validation ({{RFC2869, Section 5.14}}).
 >
@@ -672,11 +672,11 @@ As with the previous section, servers SHOULD log a message when packets are disc
 
 The "require Message-Authenticator" flag is needed in order to secure the RADIUS protocol.  Once all Access-Request packets are required to contain a valid Message-Authenticator, the BlastRADIUS attack is impossible.
 
-However, it may not be possible to upgrade all RADIUS clients.  Some products may no longer be supported, or some vendors have gone out of business.  Even if upgrades are available, the upgrade process may impact production networks, which has a cost.  There is therefore a need for RADIUS servers to protect themselves from to thte BlastRADIUS attack, while at the same time being compatible with legacy RADIUS client implementations.
+However, it may not be possible to upgrade all RADIUS clients.  Some products may no longer be supported, or some vendors have gone out of business.  Even if upgrades are available, the upgrade process may impact production networks, which has a cost.  There is therefore a need for RADIUS servers to protect themselves from the BlastRADIUS attack, while at the same time being compatible with legacy RADIUS client implementations.
 
 Enabling the "limit Proxy-State" flag allows legacy (i.e. non-upgraded) clients to be used without substantially compromising on security.  While it is theoretically possible to perform the BlastRADIUS attack via attributes other than Proxy-State, no such exploits are known at this time.  Any such exploit would require that the server receive fields under the attackers control (e.g. User-Name), and echo them back in a response.  Such attacks are only possible when the server is configured to echo back attacker-controlled data, which is not the default behavior for most servers.
 
-As a result, these two flags allow the maximum amount of security while having the minimum distruption to operational networks.  For the remaining attack vectors, is is RECOMMENDED that servers which echo back user-supplied data in responses do so only when the "require Message-Authenticator" flag is set to "true".  If such user-supplied data is echoed back in responses when the "require Message-Authenticator" flag is set "false", then the BlastRADIUS attack is theoretically still possible, even though no exploit is currently available.
+As a result, these two flags allow the maximum amount of security while having the minimum disruption to operational networks.  For the remaining attack vectors, is is RECOMMENDED that servers which echo back user-supplied data in responses do so only when the "require Message-Authenticator" flag is set to "true".  If such user-supplied data is echoed back in responses when the "require Message-Authenticator" flag is set "false", then the BlastRADIUS attack is theoretically still possible, even though no exploit is currently available.
 
 The two configuration flags on the server will protect the server even if clients have not been upgraded or been configured to be secure.  The server configuration flags will not protect clients (NASes or proxies) from servers which have not been upgraded or been configured to be secure.  More behavior changes to servers and clients are required. 
 
@@ -700,7 +700,7 @@ The location of the Message-Authenticator attribute is therefore critical to pro
 
 We note that Message-Authenticator has been defined for almost twenty-five (25) years, since {{?RFC2869}}.  All standards-compliant clients will validate Message-Authenticator; or if they do not validate it, should ignore it.  Since the publication of the original BlastRADIUS notification, it has become clear that some implementations do not behave as expected.  That is, they discard packets which contain an unexpected Message-Authenticator attribute, even though that behavior is entirely unreasonable, and is not required by any existing standard.
 
-There is very little to be done for such systems.  The behavior mandated by this specification causes problems for such systems.   The only way for RADIUS servers to be compatible with those systems is to never send Message-Authenticator in responses.  However, doing so would open up significanly more systems to the BlastRADIUS attack.
+There is very little to be done for such systems.  The behavior mandated by this specification causes problems for such systems.   The only way for RADIUS servers to be compatible with those systems is to never send Message-Authenticator in responses.  However, doing so would open up significantly more systems to the BlastRADIUS attack.
 
 In the end, the only safe solution is to declare that systems which discard packets containing Message-Authenticator are not compliant with the RADIUS specifications.  We do not decrease the security of the RADIUS protocol in order to allow the continued existence of insecure and non-compliant implementations.  In order to prevent such issues from happening in the future, we now define mandated behavior for unknown attributes in [](#unknown-attributes), below.  In short, there is no reason for implementations to discard response packets, simply because they do not recognize an attribute contained therein.
 
@@ -729,7 +729,7 @@ The above sections have now followed a complete path from client, to server, and
 
 ### Status-Server
 
-While the attack works only for Access-Request packets, Access-Accept or Access-Reject can also be sent in response to Status-Server packets ({{?RFC5997}}).  In order to simplify client implementations, we mandate the following new behaviuor with respect to Status-Server:
+While the attack works only for Access-Request packets, Access-Accept or Access-Reject can also be sent in response to Status-Server packets ({{?RFC5997}}).  In order to simplify client implementations, we mandate the following new behavior with respect to Status-Server:
 
 > Servers MUST follow the above recommendations relating to Message-Authenticator when sending Access-Accept or Access-Reject packets, even if the original request was Status-Server.
 
@@ -1044,7 +1044,7 @@ However, the guidelines provided here are known to provide minimal outages while
 
 3. Administrators of servers which proxy packets SHOULD verify that all "next hop" proxies have been upgraded, and that they return Message-Authenticator in all responses to Access-Request packets.
 
-4. Once step (4) has been validated, administrators SHOULD configure their proxy so that the outgoing client confituration, sets the "require Message-Authenticator" flag to "true".
+4. Once step (4) has been validated, administrators SHOULD configure their proxy so that the outgoing client configuration, sets the "require Message-Authenticator" flag to "true".
 
 5. Administrators of servers which receive proxied packets (i.e. packets not from a NAS) SHOULD configure the server to set the the "require Message-Authenticator" flag to "true" for each client which is an upgraded proxy.
 
@@ -1206,7 +1206,9 @@ Constant-time operations SHOULD be used for the Request Authenticator and Respon
 
 ## Minimize the use of Proxies
 
-The design of RADIUS means that even when RADIUS/TLS is used, every intermediate proxy has access to all of the information in each packet.  The only way to secure the network from such observers is to minimize the use of proxies.
+The design of RADIUS means that even when RADIUS/TLS is used, every intermediate proxy has access to all of the information in each packet.  Those observers may have been compromised by a bad actor and so the only way to secure the network is to minimize the use of proxies. The use of dynamic discovery described in [](#dynamic-discover) means that the number of intermediate proxies is minimized if not eliminated.
+
+However, the server on the visited network still acts as a proxy between the NAS and the home network.  As a result, all of the above analysis still applies when {{?RFC7585}} peer discovery is used.  There is an intermediate system which may have access to passwords or PII.  The only solution is using end-to-end security for AAA, which would involve a completely new protocol.
 
 Where it is still necessary to use intermediate proxies such as with eduroam {{EDUROAM}} and OpenRoaming {{OPENROAMING}}, it is RECOMMENDED to use EAP methods instead of bare PAP, CHAP, or MS-CHAP.  If passwords are used, they can be can be protected from being seen by proxies via TLS-based EAP methods such as EAP-TTLS or PEAP.  Passwords can also be omitted entirely from being sent over the network, as with EAP-TLS {{?RFC9190}} or EAP-pwd {{?RFC5931}}.
 
@@ -1357,17 +1359,11 @@ That being said, other authentication methods such as EAP-TLS {{?RFC9190}} and E
 
 ## Use EAP Where Possible
 
-If more complex authentication methods are needed, there are a number of EAP methods which can be used.  These methods variously allow for the use of certificates (EAP-TLS), or passwords (EAP-TTLS {{?RFC5281}}, PEAP {{I-D.josefsson-pppext-eap-tls-eap}})) and EAP-pwd {{?RFC5931}}.
+If more complex authentication methods are needed, there are a number of EAP methods which can be used.  These methods variously allow for the use of certificates (EAP-TLS), or passwords (EAP-TTLS {{?RFC5281}}, PEAP {{I-D.josefsson-pppext-eap-tls-eap}}) and EAP-pwd {{?RFC5931}}.
 
 We also note that the TLS-based EAP methods which transport passwords also hide the passwords from intermediate RADIUS proxies, which also increases security.
 
 Finally, password-based EAP methods still send PAP / CHAP / MS-CHAP inside of the TLS tunnel.  As such, the security of a home server which checks those passwords is subject to the analysis above about PAP versus CHAP, along with the issues of storing passwords in a database.
-
-## Eliminating Proxies
-
-The best way to avoid malicious proxies is to eliminate proxies entirely.  The use of dynamic peer discovery ({{?RFC7585}}) means that the number of intermediate proxies is minimized.
-
-However, the server on the visited network still acts as a proxy between the NAS and the home network.  As a result, all of the above analysis still applies when {{?RFC7585}} peer discovery is used.  There is an intermediate system which may have access to passwords or PII.  The only solution is using end-to-end security for AAA, which would involve a completely new protocol.
 
 ## Accounting Is Imperfect
 
@@ -1525,7 +1521,7 @@ Value,Description,Reference
 510,Missing Message-Authenticator,[THIS-DOCUMENT]
 ~~~~
 
-# Acknowledgements
+# Acknowledgments
 
 Thanks to the many reviewers and commenters for raising topics to discuss, and for providing insight into the issues related to increasing the security of RADIUS.  In no particular order, thanks to Margaret Cullen, Alexander Clouter, and Josh Howlett.
 
