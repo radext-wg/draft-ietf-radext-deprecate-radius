@@ -1,7 +1,7 @@
 ---
 title: Deprecating Insecure Practices in RADIUS
 abbrev: Deprecating Insecure RADIUS
-docname: draft-ietf-radext-deprecating-radius-06
+docname: draft-ietf-radext-deprecating-radius-07
 updates: 2865, 2866, 5176, 7585
 
 stand_alone: true
@@ -162,7 +162,7 @@ venue:
 
 RADIUS crypto-agility was first mandated as future work by RFC 6421.  The outcome of that work was the publication of RADIUS over TLS (RFC 6614) and RADIUS over DTLS (RFC 7360) as experimental documents.  Those transport protocols have been in wide-spread use for many years in a wide range of networks.  They have proven their utility as replacements for the previous UDP (RFC 2865) and TCP (RFC 6613) transports.  With that knowledge, the continued use of insecure transports for RADIUS has serious and negative implications for privacy and security.
 
-The recent publication of the "BlastRADIUS" exploit has also shown that RADIUS security needs to be updated.  It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates many insecure practices in RADIUS, and mandates support for secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give recommendations for practices which increase both security and privacy.
+The publication of the "BlastRADIUS" exploit has also shown that RADIUS security needs to be updated.  It is no longer acceptable for RADIUS to rely on MD5 for security.  It is no longer acceptable to send device or location information in clear text across the wider Internet.  This document therefore deprecates many insecure practices in RADIUS, and mandates support for secure TLS-based transport layers.  We also discuss related security issues with RADIUS, and give recommendations for practices which increase both security and privacy.
 
 --- middle
 
@@ -572,7 +572,7 @@ The mitigation methods outlined here allow systems to both protect themselves fr
 
 Note that in some network architectures, the attack can be mitigated simply by upgrading the RADIUS server, so that it sends Message-Authenticator as the first attribute in all responses to Access-Request packets.  However, the goal of this specification is to fix all architectures supported by RADIUS systems, rather than a limited subset.  We therefore mandate new behavior for all RADIUS clients and servers, while acknowledging that some organizations may choose to not deploy all of the new functionality.  For overall network security and good practice, we still recommend that all RADIUS clients and servers be upgraded to use the new software which contains the mitigations, and also be configured with the highest level of security.
 
-###  New Configuration Flags
+###  New Configuration Flags {#new-configuration-flags}
 
 We define new configuration flags for clients and servers.  The behavior and meaning of these flags will be discussed below.  Introducing these flags before discussing their meaning makes the subsequent discussion simpler and easier to understand.
 
@@ -590,7 +590,7 @@ It is RECOMMENDED that implementations support both a global setting, and per-cl
 
 The combination of global and more narrow configuration allows administrators to upgrade systems gradually, without requiring a "flag day" when everything changes on a global basis.
 
-### Clients and Access-Request
+### Clients and Access-Request {#client-access-request}
 
 We mandate the following new behavior for RADIUS clients:
 
@@ -608,7 +608,7 @@ This behavior has been enabled in the FreeRADIUS server for over a decade, and t
 
 However, many existing RADIUS clients do not send Message-Authenticator.  It also may be difficult to upgrade some client equipment, as the relevant vendor may have gone out of business, or may have marked equipment as “end of life” and thus unsupported.  It is therefore necessary to both work with such systems by not breaking existing RADIUS deployments, while at the same time protecting them as much as practically possible.
 
-### Servers and Access-Request
+### Servers and Access-Request {#server-access-request}
 
 We mandate the following new behavior for RADIUS servers:
 
@@ -672,6 +672,8 @@ As with the previous section, servers SHOULD log a message when packets are disc
 
 ### Further Explanation and Comments
 
+This section provides further explanation of the issues, and the rationale for the requirements made by this specification.
+
 The "require Message-Authenticator" flag is needed in order to secure the RADIUS protocol.  Once all Access-Request packets are required to contain a valid Message-Authenticator, the BlastRADIUS attack is impossible.
 
 However, it may not be possible to upgrade all RADIUS clients.  Some products may no longer be supported, or some vendors have gone out of business.  Even if upgrades are available, the upgrade process may impact production networks, which has a cost.  There is therefore a need for RADIUS servers to protect themselves from to the BlastRADIUS attack, while at the same time being compatible with legacy RADIUS client implementations.
@@ -682,7 +684,7 @@ As a result, these two flags allow the maximum amount of security while having t
 
 The two configuration flags on the server will protect the server even if clients have not been upgraded or been configured to be secure.  The server configuration flags will not protect clients (NASes or proxies) from servers which have not been upgraded or been configured to be secure.  More behavior changes to servers and clients are required. 
 
-### Server Responses to Access-Request
+### Server Responses to Access-Request {#server-responses}
 
 We mandate the following behavior for servers when sending responses to Access-Request packets:
 
@@ -696,19 +698,31 @@ When the Message-Authenticator is the last attribute in a packet (as was histori
 
 The analysis is similar if the Message-Authenticator is in the middle of the packet, with attributes existing both before an after the Message-Authenticator.  Attributes before the Message-Authenticator can be modified, discarded, or added, while attributes after the Message-Authenticator need to remain in the packet.  We direct the reader to Section 7.2 of {{BLAST}} for a more complete description of these issues.
 
-As a result, adding a Message-Authenticator anywhere other than as the first one will only mitigate the attack if the client implements the "require Message-Authenticator" flag, and has set that flag to "true".  Since there is no feature negotiation in RADIUS, the server has no way of knowing the clients configuration, and therefore needs to behave as if the client has the most insecure configuration. 
+As a result, the attack will only be mitigated in one of two circumstances:
 
-The location of the Message-Authenticator attribute is therefore critical to protect legacy clients which do not check for its existence or validate its contents.  Many legacy clients do not send Message-Authenticator in Access-Request packets, and therefore are highly likely to not validate it in responses to those Access-Requests.  Upgrading all of these clients may be difficult, or in some cases impossible.  It is therefore important to have mitigation factors which protect those systems.
+1. The client implements the "require Message-Authenticator" flag, and has set that flag to "true",
 
-We note that Message-Authenticator has been defined for almost twenty-five (25) years, since {{?RFC2869}}.  All standards-compliant clients will validate Message-Authenticator; or if they do not validate it, should ignore it.  Since the publication of the original BlastRADIUS notification, it has become clear that some implementations do not behave as expected.  That is, they discard packets which contain an unexpected Message-Authenticator attribute, even though that behavior is entirely unreasonable, and is not required by any existing standard.
+2. The server places Message-Authenticator as the first attribute in all responses to Access-Request packets.
 
-There is very little to be done for such systems.  The behavior mandated by this specification causes problems for such systems.   The only way for RADIUS servers to be compatible with those systems is to never send Message-Authenticator in responses.  However, doing so would open up significantly more systems to the BlastRADIUS attack.
+Since RADIUS has no feature negotiation, the server has no way of knowing whether or not the client has been configured securely.  The only remaining choice then for the server, is the second one.  This document therefore mandates that all RADIUS servers send Message-Authenticator as the first attribute in all responses to Access-Request packets.
 
-In the end, the only safe solution is to declare that systems which discard packets containing Message-Authenticator are not compliant with the RADIUS specifications.  We do not decrease the security of the RADIUS protocol in order to allow the continued existence of insecure and non-compliant implementations.  In order to prevent such issues from happening in the future, we now define mandated behavior for unknown attributes in [](#unknown-attributes), below.  In short, there is no reason for implementations to discard response packets, simply because they do not recognize an attribute contained therein.
+This mandate ensures that the RADIUS protocol is secured for both the client and the server.  We then need to verify that this change in behavior does not affect legacy clients which may not support Message-Authenticator.
+
+Nearly all clients which do not validate Message-Authenticator are known to accept responses which contain it, due to the provisions of {{RFC2866, Section 5}}:
+
+> A RADIUS client MAY ignore Attributes with an unknown Type.
+
+These RADIUS clients are therefore compatible with the protocol change outlined in this document.   We note also that Message-Authenticator has been defined for almost twenty-five (25) years, since {{?RFC2869}}, so there are few reasons for equipment to not support it.
+
+Since the publication of the original BlastRADIUS notification, it has become known that some implementations do not behave as expected.  That is, instead of ignoring an unexpected Message-Authenticator attribute, they instead discard the response.  That behavior is entirely unreasonable, and is not required by any existing standard.  The only way for RADIUS servers could be compatible with such systems is to never send Message-Authenticator in responses.  However, doing so would open up significantly more systems to the BlastRADIUS attack.
+
+The only way to secure those systems is to upgrade them.  Failing that, the administrators of those systems will need to accept the fact that their systems are vulnerable.
+
+The solution adopted by this specification is to declare that clients or servers which discard packets containing Message-Authenticator are not compliant with the RADIUS specifications.  It is not acceptable to decrease the security of the RADIUS protocol in order to be compatible with insecure and non-compliant implementations.  This specification attempts to prevent such issues from happening in the future, by mandating behavior for unknown attributes in [](#unknown-attributes), below.  There is no reason for an implementation to discard response a packet simply because it does not recognize an attribute in the packet.
 
 As it is difficult to upgrade both clients and servers simultaneously, we also need a method to protect clients when the server has not been updated.  That is, clients cannot depend on the Message-Authenticator existing in response packets.  Clients need to take additional steps to protect themselves, independent of any server updates.
 
-### Clients Receiving Responses
+### Clients Receiving Responses {#client-responses}
 
 We mandate the following new behavior for RADIUS clients:
 
@@ -729,7 +743,7 @@ Unfortunately, the client cannot determine if a packet was discarded due to an a
 
 The above sections have now followed a complete path from client, to server, and back again.  If each client to server hop is secured via the above methods, then by construction, the RADIUS protocol is no longer vulnerable to the BlastRADIUS attack.
 
-### Status-Server
+### Status-Server {#status-server}
 
 While the attack works only for Access-Request packets, Access-Accept or Access-Reject can also be sent in response to Status-Server packets ({{?RFC5997}}).  In order to simplify client implementations, we mandate the following new behavior with respect to Status-Server:
 
@@ -742,6 +756,94 @@ We note that {{?RFC5997, Section 3}} states:
 > .. all Status-Server packets MUST include a Message-Authenticator attribute.  Failure to do so would mean that the packets could be trivially spoofed.
 
 As a result, compliant implementations of {{RFC5997}} do not need to change their behavior with respect to sending or receiving Status-Server packets: they are already protected against the BlastRADIUS attack.
+
+### Summary
+
+The RADIUS protocol as defined in {{RFC2865}} is vulnerable to an attack due to Access-Request packets being unauthenticated.  This issue was first raised as a vulnerability in 1998 {{DATTACK}} , though it took until 2024 {{BLAST}} before an exploit was demonstrated.  This vulnerability, and the response to it, highlighted a number of issues with vendor implementations.
+
+This section summarizes the various implementation issues, and the recommended fixes to them.  While this section does not contain normative text, it refers to normative requirements earlier in this specification.  This summary is apparently necessary, because multiple implementations failed to follow the above normative requirements. Instead, those systems either implemented behavior which was forbidden by the normative text, or else failed to implement behavior which was required by the normative text.
+
+It is therefore sadly necessary to reiterate to the reader that the normative worss in {{RFC8174}} really are normative, and that they need to be respected.  The reader should not assume that other non-normative text in this specification over-rides the clear mandates of the normative text.
+
+The following list outlines the problems seen, in no particular order.
+
+* Some implementations discarded packets which contained Message-Authenticator.
+
+The following list outlines the requirements on client implementations, and references the prior sections which contain the normative text.  While the following list does not contain normative text (in order to avoid potential conflict or confusion), the reader should follow the references to verify that the behavior described below is truly normative.
+
+* clients include Message-Authenticator in all Access-Request packets,
+  [](#client-access-request)
+
+  * clients can place Message-Authenticator as the first attribute in
+    all Access-Request packets, but this placement is not required for
+    security.
+
+* clients validate the contents of Message-Authenticator in all
+  packets that they receive, {{RFC2869, Section 5.14}}
+
+* clients do take any steps to check the location of
+  Message-Authenticator in any response packet, [](#client-responses)
+
+* clients do not discard packets which contain unknown attributes,
+  [](#unknown-attributes)
+
+* clients implement a boolean configuration flag "require
+  Message-Authenticator", [](#new-configuration-flags)
+
+  * If set to "false", clients do not take any additional steps.
+
+  * if set to "true", clients discard all responses to Access-Request
+    which do not contain a Message-Authenticator attribute.  This
+    discard happens before the Response Authenticator or
+    Message-Authenticator are validated.
+
+The following list outlines requirements on server implementations, with the same explanations and caveats given above for the list of requirements on client implementations.
+
+* servers validate the contents of Message-Authenticator in all
+  packets that they receive, [](#server-access-request)
+
+* server do take any steps to check the location of
+  Message-Authenticator in any request packet, [](#server-responses)
+
+* servers do not discard packets which contain unknown attributes,
+  [](#unknown-attributes)
+
+* servers implement a boolean configuration flag "require
+  Message-Authenticator", [](#new-configuration-flags)
+
+  * If set to "false", servers follow the behavior for the
+    "limit Proxy-State" flag.
+
+  * if set to "true", servers discard all Access-Request packets
+    which do not contain a Message-Authenticator attribute.  This
+    discard happens before the Request Authenticator or
+    Message-Authenticator are validated.
+
+* servers implement a boolean configuration flag "limit Proxy-State",
+  [](#new-configuration-flags) and [](#limit-proxy-state).
+
+  * servers check this flag only when the "require
+    Message-Authenticator" flag is set to "false".
+
+  * If set to "false", servers take no further action.
+
+  * If set to "true", servers discard all Access-Request packets which
+    contain one or more Proxy-State attributes.  This
+    discard happens before the Request Authenticator or
+    Message-Authenticator are validated.
+
+* servers include Message-Authenticator in all responses to
+  Access-Request packets, [](#server-responses)
+
+* servers include Message-Authenticator in all Access-Accept,
+  Access-Reject, and Access-Challenge packets, [](#server-responses)
+  and [](#status-server)
+
+* servers place Message-Authenticator as the first attribute in all
+  responses to Access-Request packets, and in all Access-Accept,
+  Access-Reject, and Access-Challenge packets, [](#server-responses).
+  This placement is required for security, in order to protect both
+  clients and servers from the BlastRADIUS attack.
 
 ## Related Issues
 
@@ -1412,7 +1514,7 @@ client MUST NOT require attributes of the same type to be contiguous.
 
 We add a missing case here.
 
-A RADIUS client or server MUST NOT have dependencies on the order or location of a particular attribute.  A RADIUS client or server MUST NOT discard otherwise valid packets which have attributes in an order which unexpected to the implementation, but which is is valid by the above rules.
+A RADIUS client or server MUST NOT have dependencies on the order or location of a particular attribute.  A RADIUS client or server MUST NOT discard otherwise valid packets which have attributes in an order which is unexpected to the implementation, but which is is valid by the above rules.
 
 For example, if Message-Authenticator passes validation, then the packet is authentic and it has not been modified. The location of Message-Authenticator within the packet does not matter for authenticated packets.  If can be the first, second, or last attribute.
 
