@@ -1,7 +1,7 @@
 ---
 title: Deprecating Insecure Practices in RADIUS
 abbrev: Deprecating Insecure RADIUS
-docname: draft-ietf-radext-deprecating-radius-09
+docname: draft-ietf-radext-deprecating-radius-10
 updates: 2865, 2866, 5176, 7585
 
 stand_alone: true
@@ -487,6 +487,8 @@ The Tunnel-Password obfuscation method was defined in {{RFC2868, Section 3.5}}, 
 Specifications MAY define new attributes which use this obfuscation method.  Specifications MAY allow these attributes in Access-Accept, but MUST NOT allow them in any other packet type.
 
 Implementations MAY MAY allow these attributes in Access-Accept.  Implementations MUST NOT allow these attributes in packets types other than Access-Accept or CoA-Request.
+
+Due to the limited entropy in CoA-Request packets {{I-D.dekok-radext-review-radius}}, the use of these attributes in CoA-Request packets is NOT RECOMMENDED.
 
 ### Other obfuscation methods
 
